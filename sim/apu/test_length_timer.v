@@ -1,29 +1,53 @@
 `timescale 1ns/1ns
 
 module test_length_timer;
-    // 仮
-    reg tb_a;
-    reg tb_b;
-    wire tb_y;
+    parameter STEP = 10;
 
-    length_timer uut (
-        .a(tb_a),
-        .b(tb_b),
-        .y(tb_y)
+    reg clk;
+    reg rst_n;
+    reg enable;
+    reg we;
+    reg [7:0] initial_length_timer;
+    reg [15:0] timeout;
+    wire expired;
+
+    length_timer #(
+        .CLOCK_HZ(256)
+    ) timer(
+        .clk(clk),
+        .rst_n(rst_n),
+        .we(we),
+        .i_enable(enable),
+        .i_initial_length_timer(initial_length_timer),
+        .i_timeout(timeout),
+        .o_expired(expired)
     );
+
+    always #(STEP/2) begin
+        clk <= ~clk;
+    end
 
     initial begin
         $dumpfile("build/test_length_timer.vcd");
         $dumpvars(0, test_length_timer);
 
-        tb_a = 0; tb_b = 0;
-        #10;
-        tb_a = 0; tb_b = 1;
-        #10;
-        tb_a = 1; tb_b = 0;
-        #10;
-        tb_a = 1; tb_b = 1;
-        #10;
+        clk <= 0;
+
+        // リセット
+        rst_n <= 0;
+        #STEP
+        rst_n <= 1;
+        #STEP
+
+        // パラメータセット
+        enable <= 1;
+        initial_length_timer <= 1;
+        timeout <= 1;
+        we <= 1;
+        #STEP
+
+        #(STEP * 10)
+
         $finish;
     end
 endmodule
