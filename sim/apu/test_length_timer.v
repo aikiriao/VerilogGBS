@@ -7,6 +7,7 @@ module test_length_timer;
     reg rst_n;
     reg enable;
     reg we;
+    reg trigger;
     reg [7:0] initial_length_timer;
     reg [15:0] timeout;
     wire expired;
@@ -17,6 +18,7 @@ module test_length_timer;
         .clk(clk),
         .rst_n(rst_n),
         .we(we),
+        .trigger(trigger),
         .i_enable(enable),
         .i_initial_length_timer(initial_length_timer),
         .i_timeout(timeout),
@@ -45,6 +47,11 @@ module test_length_timer;
         timeout <= 1;
         we <= 1;
         #STEP
+
+        // トリガー
+        trigger <= 1;
+        #STEP
+        trigger <= 0;
 
         #(STEP * 10)
 

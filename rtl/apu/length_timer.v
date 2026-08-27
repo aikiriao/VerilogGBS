@@ -4,6 +4,7 @@ module length_timer #(
     input clk,   // クロック
     input rst_n, // 非同期リセット
     input we, // パラメータ書き込み
+    input trigger, // トリガー信号
     input i_enable, // 有効か
     input [7:0] i_initial_length_timer, // タイマー初期値
     input [15:0] i_timeout, // タイムアウト
@@ -36,6 +37,16 @@ module length_timer #(
         end
     end
 
+    // トリガー
+    always @(posedge clk)
+    begin
+        if (trigger) begin
+            length_timer <= initial_length_timer;
+            expired <= 0;
+            clk_count <= 0;
+        end
+    end
+
     // カウントアップ
     always @(posedge clk or negedge rst_n)
     begin
@@ -43,7 +54,7 @@ module length_timer #(
             expired <= 0;
             clk_count <= 0;
             length_timer <= 0;
-        end else if (enable) begin
+        end else if (enable & !expired) begin
             clk_count <= clk_count + 1;
             if (clk_count >= CLK_UPDATE_COUNT_PERIOD) begin
                 length_timer <= length_timer + 1;
