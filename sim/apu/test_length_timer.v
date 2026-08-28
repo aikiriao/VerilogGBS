@@ -1,3 +1,4 @@
+`include "test.vh"
 `timescale 1ns/1ns
 
 module test_length_timer;
@@ -11,6 +12,7 @@ module test_length_timer;
     reg [7:0] initial_length_timer;
     reg [15:0] timeout;
     wire expired;
+    integer t;
 
     length_timer #(
         .CLOCK_HZ(256)
@@ -25,6 +27,50 @@ module test_length_timer;
         .o_expired(expired)
     );
 
+    // タイマーのテストケース
+    task automatic timer_test_case;
+        input [7:0] test_initial_length_timer;
+        input [15:0] test_timeout;
+        input integer expected_clk_timeout;
+    
+        begin
+            // リセット
+            rst_n <= 0;
+            #STEP
+            rst_n <= 1;
+            #STEP
+            `ASSERT_EQ(timer.expired, 0);
+            `ASSERT_EQ(timer.enable, 0);
+            `ASSERT_EQ(timer.initial_length_timer, 8'd0);
+            `ASSERT_EQ(timer.length_timer, 16'd0);
+            `ASSERT_EQ(timer.timeout, 16'd0);
+            `ASSERT_EQ(timer.clk_count, 16'd1);
+
+            // パラメータセット
+            enable <= 1;
+            initial_length_timer <= test_initial_length_timer;
+            timeout <= test_timeout;
+            we <= 1;
+            #STEP
+            we <= 0;
+            `ASSERT_EQ(timer.enable, 1);
+            `ASSERT_EQ(timer.initial_length_timer, test_initial_length_timer);
+            `ASSERT_EQ(timer.timeout, test_timeout);
+
+            // トリガー
+            trigger <= 1;
+            #STEP
+            trigger <= 0;
+            `ASSERT_EQ(timer.expired, 0);
+
+            // 期待した時間待機
+            #(expected_clk_timeout * STEP)
+            // 時間切れになっていることをチェック
+            `EXPECT_EQ(timer.expired, 1);
+            `EXPECT_EQ(expired, 1);
+        end
+    endtask
+
     always #(STEP/2) begin
         clk <= ~clk;
     end
@@ -35,25 +81,10 @@ module test_length_timer;
 
         clk <= 0;
 
-        // リセット
-        rst_n <= 0;
-        #STEP
-        rst_n <= 1;
-        #STEP
-
-        // パラメータセット
-        enable <= 1;
-        initial_length_timer <= 1;
-        timeout <= 1;
-        we <= 1;
-        #STEP
-
-        // トリガー
-        trigger <= 1;
-        #STEP
-        trigger <= 0;
-
-        #(STEP * 10)
+        // 初期タイマー値を0に固定し、期待した時間でexpiredが立つかチェック
+        for (t = 1; t <= 10; t = t + 1) begin
+            timer_test_case(8'd0, t, t);
+        end
 
         $finish;
     end

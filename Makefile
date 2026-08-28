@@ -22,6 +22,7 @@ test_%:
 	$(IVERILOG) \
 		-g2001 \
 		-s test_$* \
+		-I sim/include \
 		-f $(FILELIST_DIR)/test_$*.f \
 		-o $(BUILD_DIR)/test_$*.vvp
 	$(VVP) $(BUILD_DIR)/test_$*.vvp

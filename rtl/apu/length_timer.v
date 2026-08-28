@@ -14,8 +14,8 @@ module length_timer #(
     localparam APU_LENGTH_TIMER_UPDATE_PERIOD_HZ = 256; // 持続時間タイマーの更新頻度
     localparam CLK_UPDATE_COUNT_PERIOD = CLOCK_HZ / APU_LENGTH_TIMER_UPDATE_PERIOD_HZ; // クロックの更新周期
 
-    reg expired;
-    reg enable;
+    reg expired; // タイマー時間切れか
+    reg enable; // タイマー有効か
     reg [7:0] initial_length_timer; // 長さタイマー初期値
     reg [15:0] length_timer; // タイマーカウント
     reg [15:0] timeout; // タイムアウトカウント
@@ -41,9 +41,9 @@ module length_timer #(
     always @(posedge clk)
     begin
         if (trigger) begin
-            length_timer <= initial_length_timer;
             expired <= 0;
-            clk_count <= 0;
+            clk_count <= 1;
+            length_timer <= initial_length_timer;
         end
     end
 
@@ -52,16 +52,18 @@ module length_timer #(
     begin
         if (!rst_n) begin
             expired <= 0;
-            clk_count <= 0;
+            clk_count <= 1;
             length_timer <= 0;
         end else if (enable & !expired) begin
-            clk_count <= clk_count + 1;
             if (clk_count >= CLK_UPDATE_COUNT_PERIOD) begin
-                length_timer <= length_timer + 1;
                 if (length_timer >= timeout) begin
                     expired <= 1;
+                end else begin
+                    clk_count <= 1;
+                    length_timer <= length_timer + 1;
                 end
-                clk_count <= 0;
+            end else begin
+                clk_count <= clk_count + 1;
             end
         end
     end
