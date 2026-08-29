@@ -12,7 +12,7 @@ module test_length_timer;
     reg [7:0] initial_length_timer;
     reg [15:0] timeout;
     wire expired;
-    integer t;
+    integer t, i;
 
     length_timer #(
         .CLOCK_HZ(256)
@@ -58,10 +58,10 @@ module test_length_timer;
             `ASSERT_EQ(timer.timeout, test_timeout);
 
             // トリガー
+            `ASSERT_EQ(timer.expired, 0);
             trigger <= 1;
             #STEP
             trigger <= 0;
-            `ASSERT_EQ(timer.expired, 0);
 
             // 期待した時間待機
             #(expected_clk_timeout * STEP)
@@ -82,8 +82,15 @@ module test_length_timer;
         clk <= 0;
 
         // 初期タイマー値を0に固定し、期待した時間でexpiredが立つかチェック
-        for (t = 1; t <= 10; t = t + 1) begin
+        for (t = 0; t <= 10; t = t + 1) begin
             timer_test_case(8'd0, t, t);
+        end
+
+        // TODO
+        for (t = 0; t <= 2; t = t + 1) begin
+            for (i = 0; i < t; i = i + 1) begin
+                timer_test_case(i, t, t - i + 1);
+            end
         end
 
         $finish;
