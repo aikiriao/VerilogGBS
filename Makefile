@@ -1,8 +1,13 @@
 IVERILOG := iverilog
-VVP      := vvp
+VVP := vvp
+RM_RF := rm -rf
 
-BUILD_DIR   := build
+BUILD_DIR := build
 FILELIST_DIR := sim/filelist
+
+ifeq ($(OS),Windows_NT)
+	RM_RF := rmdir /S /Q
+endif
 
 TESTS := $(basename $(notdir $(wildcard $(FILELIST_DIR)/*.f)))
 
@@ -11,14 +16,16 @@ TESTS := $(basename $(notdir $(wildcard $(FILELIST_DIR)/*.f)))
 all: test
 
 clean:
-	rm -rf $(BUILD_DIR)
+	$(RM_RF) $(BUILD_DIR)
 
 # 全テスト
 test: $(TESTS)
 
+$(BUILD_DIR):
+	mkdir $(BUILD_DIR)
+
 # 個別テスト
-test_%:
-	mkdir -p $(BUILD_DIR)
+test_%: $(BUILD_DIR)
 	$(IVERILOG) \
 		-g2001 \
 		-s test_$* \
