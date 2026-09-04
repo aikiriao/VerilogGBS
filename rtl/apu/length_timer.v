@@ -1,66 +1,59 @@
 module length_timer #(
     parameter CLOCK_HZ = 1048576 // クロック動作周波数
 )(
-    input clk,   // クロック
-    input rst_n, // 非同期リセット
-    input we, // パラメータ書き込み
-    input trigger, // トリガー信号
-    input i_enable, // 有効か
-    input [7:0] i_initial_length_timer, // タイマー初期値
-    input [15:0] i_timeout, // タイムアウト
-    output o_expired // タイマー時間切れ
+    input wire i_clk, // クロック
+    input wire i_rst_n, // 非同期リセット
+    input wire i_we, // パラメータ書き込み
+    input wire i_trigger, // トリガー信号
+    input wire i_enable, // 有効か
+    input wire [7:0] i_initial_timer_count, // タイマー初期値
+    input wire [15:0] i_timeout, // タイムアウト
+    output reg o_expired // タイマー時間切れ
 );
 
     localparam APU_LENGTH_TIMER_UPDATE_PERIOD_HZ = 256; // 持続時間タイマーの更新頻度
     localparam CLK_UPDATE_COUNT_PERIOD = CLOCK_HZ / APU_LENGTH_TIMER_UPDATE_PERIOD_HZ; // クロックの更新周期
 
-    reg expired; // タイマー時間切れか
     reg enable; // タイマー有効か
-    reg [7:0] initial_length_timer; // 長さタイマー初期値
-    reg [15:0] length_timer; // タイマーカウント
+    reg [7:0] initial_timer_count; // 長さタイマー初期値
+    reg [15:0] timer_count; // タイマーカウント
     reg [15:0] timeout; // タイムアウトカウント
     reg [15:0] clk_count; // クロックカウント
 
-    assign o_expired = expired;
-
     // 内部レジスタ更新
-    always @(posedge clk or negedge rst_n)
+    always @(posedge i_clk or negedge i_rst_n)
     begin
-        if (!rst_n) begin
+        if (!i_rst_n) begin
             enable <= 0;
-            initial_length_timer <= 0;
+            initial_timer_count <= 0;
             timeout <= 0;
-        end else if (we) begin
+        end else if (i_we) begin
             enable <= i_enable;
-            initial_length_timer <= i_initial_length_timer;
+            initial_timer_count <= i_initial_timer_count;
             timeout <= i_timeout;
         end
     end
 
-    // トリガー
-    always @(posedge clk)
+    // トリガー・カウントアップ
+    always @(posedge i_clk or negedge i_rst_n)
     begin
-        if (trigger) begin
-            expired <= 0;
+        if (!i_rst_n) begin
+            o_expired <= 0;
             clk_count <= 1;
-            length_timer <= initial_length_timer;
-        end
-    end
-
-    // カウントアップ
-    always @(posedge clk or negedge rst_n)
-    begin
-        if (!rst_n) begin
-            expired <= 0;
+            timer_count <= 0;
+        end else if (i_trigger) begin
+            // トリガー
+            o_expired <= 0;
             clk_count <= 1;
-            length_timer <= 0;
-        end else if (enable & !expired) begin
+            timer_count <= initial_timer_count;
+        end else if (enable & !o_expired) begin
+            // カウントアップ
             if (clk_count >= CLK_UPDATE_COUNT_PERIOD) begin
-                if (length_timer >= timeout) begin
-                    expired <= 1;
+                if (timer_count >= timeout) begin
+                    o_expired <= 1;
                 end else begin
                     clk_count <= 1;
-                    length_timer <= length_timer + 1;
+                    timer_count <= timer_count + 1;
                 end
             end else begin
                 clk_count <= clk_count + 1;

@@ -9,7 +9,7 @@ module test_length_timer;
     reg enable;
     reg we;
     reg trigger;
-    reg [7:0] initial_length_timer;
+    reg [7:0] initial_timer_count;
     reg [15:0] timeout;
     wire expired;
     integer t, i;
@@ -17,19 +17,19 @@ module test_length_timer;
     length_timer #(
         .CLOCK_HZ(256)
     ) timer(
-        .clk(clk),
-        .rst_n(rst_n),
-        .we(we),
-        .trigger(trigger),
+        .i_clk(clk),
+        .i_rst_n(rst_n),
+        .i_we(we),
+        .i_trigger(trigger),
         .i_enable(enable),
-        .i_initial_length_timer(initial_length_timer),
+        .i_initial_timer_count(initial_timer_count),
         .i_timeout(timeout),
         .o_expired(expired)
     );
 
     // タイマーのテストケース
     task automatic timer_test_case;
-        input [7:0] test_initial_length_timer;
+        input [7:0] test_initial_timer_count;
         input [15:0] test_timeout;
         input integer expected_clk_timeout;
     
@@ -39,26 +39,26 @@ module test_length_timer;
             #STEP
             rst_n <= 1;
             #STEP
-            `ASSERT_EQ(timer.expired, 0);
+            `ASSERT_EQ(timer.o_expired, 0);
             `ASSERT_EQ(timer.enable, 0);
-            `ASSERT_EQ(timer.initial_length_timer, 8'd0);
-            `ASSERT_EQ(timer.length_timer, 16'd0);
+            `ASSERT_EQ(timer.initial_timer_count, 8'd0);
+            `ASSERT_EQ(timer.timer_count, 16'd0);
             `ASSERT_EQ(timer.timeout, 16'd0);
             `ASSERT_EQ(timer.clk_count, 16'd1);
 
             // パラメータセット
             enable <= 1;
-            initial_length_timer <= test_initial_length_timer;
+            initial_timer_count <= test_initial_timer_count;
             timeout <= test_timeout;
             we <= 1;
             #STEP
             we <= 0;
             `ASSERT_EQ(timer.enable, 1);
-            `ASSERT_EQ(timer.initial_length_timer, test_initial_length_timer);
+            `ASSERT_EQ(timer.initial_timer_count, test_initial_timer_count);
             `ASSERT_EQ(timer.timeout, test_timeout);
 
             // トリガー
-            `ASSERT_EQ(timer.expired, 0);
+            `ASSERT_EQ(timer.o_expired, 0);
             trigger <= 1;
             #STEP
             trigger <= 0;
@@ -66,7 +66,7 @@ module test_length_timer;
             // 期待した時間待機
             #(expected_clk_timeout * STEP)
             // 時間切れになっていることをチェック
-            `EXPECT_EQ(timer.expired, 1);
+            `EXPECT_EQ(timer.o_expired, 1);
             `EXPECT_EQ(expired, 1);
         end
     endtask
@@ -82,13 +82,13 @@ module test_length_timer;
         clk <= 0;
 
         // 初期タイマー値を0に固定し、期待した時間でexpiredが立つかチェック
-        for (t = 0; t <= 10; t = t + 1) begin
-            timer_test_case(8'd0, t, t);
+        for (t = 0; t <= 20; t = t + 1) begin
+            timer_test_case(8'd0, t, t + 1);
         end
 
-        // TODO
-        for (t = 0; t <= 2; t = t + 1) begin
-            for (i = 0; i < t; i = i + 1) begin
+        // 初期タイマー値を変えてチェック
+        for (t = 0; t <= 20; t = t + 1) begin
+            for (i = 0; i <= t; i = i + 1) begin
                 timer_test_case(i, t, t - i + 1);
             end
         end
