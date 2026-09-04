@@ -4,10 +4,10 @@ module length_timer #(
     input wire i_clk, // クロック
     input wire i_rst_n, // 非同期リセット
     input wire i_we, // パラメータ書き込み
-    input wire i_trigger, // トリガー信号
     input wire i_enable, // 有効か
     input wire [7:0] i_initial_timer_count, // タイマー初期値
     input wire [15:0] i_timeout, // タイムアウト
+    input wire i_trigger, // トリガー信号
     output reg o_expired // タイマー時間切れ
 );
 

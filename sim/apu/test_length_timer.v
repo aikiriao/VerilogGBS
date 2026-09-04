@@ -16,14 +16,14 @@ module test_length_timer;
 
     length_timer #(
         .CLOCK_HZ(256)
-    ) timer(
+    ) timer (
         .i_clk(clk),
         .i_rst_n(rst_n),
         .i_we(we),
-        .i_trigger(trigger),
         .i_enable(enable),
         .i_initial_timer_count(initial_timer_count),
         .i_timeout(timeout),
+        .i_trigger(trigger),
         .o_expired(expired)
     );
 

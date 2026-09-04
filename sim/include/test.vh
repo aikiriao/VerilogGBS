@@ -20,4 +20,4 @@
         $display("             expected = %h", (expected)); \
     end
 
-`endif
+`endif /* TEST_VH */
