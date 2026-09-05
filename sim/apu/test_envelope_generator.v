@@ -13,7 +13,7 @@ module test_envelope_generator;
     reg [3:0] initial_volume;
     reg [2:0] volume_sweep_pace;
     wire [3:0] volume;
-    integer t, i;
+    integer i;
 
     envelope_generator #(
         .CLOCK_HZ(64)
@@ -56,8 +56,8 @@ module test_envelope_generator;
             #STEP
             we <= 0;
             `ASSERT_EQ(eg.initial_volume, test_initial_volume);
-            `ASSERT_EQ(eg.volume_delta_dir, volume_delta_dir);
-            `ASSERT_EQ(eg.volume_sweep_pace, volume_sweep_pace);
+            `ASSERT_EQ(eg.volume_delta_dir, test_volume_delta_dir);
+            `ASSERT_EQ(eg.volume_sweep_pace, test_volume_sweep_pace);
 
             // トリガー
             `ASSERT_EQ(eg.o_volume, 0);
@@ -67,7 +67,7 @@ module test_envelope_generator;
 
             // 期待した時間待機
             #(wait_duration * STEP)
-            // 時間切れになっていることをチェック
+            // 期待したボリュームになっているかチェック
             `EXPECT_EQ(eg.o_volume, expected_volume);
         end
     endtask
@@ -82,9 +82,25 @@ module test_envelope_generator;
 
         clk <= 0;
 
+        // 即時設定ケース
+        for (i = 0; i <= 4'hF; i = i + 1) begin
+            eg_test_case(i, 1, 0, 1, i);
+            eg_test_case(i, 0, 0, 1, i);
+        end
+
         // 単純な下降・上昇ケース
-        eg_test_case(4'h0, 1, 1, 20, 4'hF);
-        eg_test_case(4'hF, 0, 1, 20, 4'h0);
+        eg_test_case(4'h0, 1, 1, 16, 4'hF);
+        eg_test_case(4'hF, 0, 1, 16, 4'h0);
+
+        // ペースを変えたときのケース
+        eg_test_case(4'h0, 1, 2, 16, 4'h8);
+        eg_test_case(4'h0, 1, 4, 16, 4'h4);
+        eg_test_case(4'hF, 0, 2, 16, 4'h7);
+        eg_test_case(4'hF, 0, 4, 16, 4'hB);
+
+        // ボリューム端点のケース
+        eg_test_case(4'hF, 1, 1, 100, 4'hF);
+        eg_test_case(4'h0, 0, 1, 100, 4'h0);
 
         $finish;
     end

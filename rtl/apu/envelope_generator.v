@@ -16,7 +16,7 @@ module envelope_generator #(
 
     reg volume_delta_dir; // ボリューム更新方向
     reg [4:0] initial_volume; // ボリューム初期値
-    reg [2:0] volume_sweep_pace; // ボリューム更新スピード
+    reg [2:0] volume_sweep_pace; // ボリューム更新スピード（0は即時設定）
     reg [15:0] clk_count; // クロックカウント
     reg [2:0] timer_count; // タイマーカウント
 
@@ -46,7 +46,7 @@ module envelope_generator #(
             o_volume <= initial_volume;
             clk_count <= 1;
             timer_count <= 1;
-        end else begin
+        end else if (volume_sweep_pace != 0) begin
             // カウントアップ
             if (clk_count >= CLK_UPDATE_COUNT_PERIOD) begin
                 if (timer_count >= volume_sweep_pace) begin
