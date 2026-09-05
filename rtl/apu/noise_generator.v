@@ -16,19 +16,19 @@ module noise_generator #(
     input wire i_we_control, // 制御フラグセット
     input wire i_length_timer_enable, // 長さタイマー有効
     input wire i_trigger, // トリガー信号
-    output reg [3:0] o_signal // 出力信号
+    output wire [3:0] o_signal // 出力信号
 );
 
     localparam NOISE_GENERATOR_CLOCK_HZ = 262144; // ノイズジェネレータのクロック動作周波数
     localparam CLK_UPDATE_COUNT_PERIOD = CLOCK_HZ / NOISE_GENERATOR_CLOCK_HZ; // クロックの更新周期
 
-    reg enable; // 有効か？
     wire [3:0] eg_volume; // 出力ボリューム
     wire timer_expired; // 時間切れか？
     wire eg_trigger; // エンベロープジェネレータのトリガー信号
     wire length_timer_trigger; // 長さタイマーのトリガー信号
+
+    reg enable; // 有効か？
     reg [15:0] clk_count; // クロックカウント
-    reg [15:0] clk_divider; // 分周比
     reg [15:0] clk_div_count; // 分周比カウント
     reg [15:0] clk_div_period; // 分周比更新周期
     reg [15:0] lfsr_mask; // LFSRのマスク
@@ -43,7 +43,7 @@ module noise_generator #(
         .i_volume_delta_dir(i_volume_delta_dir),
         .i_initial_volume(i_initial_volume),
         .i_volume_sweep_pace(i_volume_sweep_pace),
-        .i_trigger(eg_trigger),
+        .i_trigger(trigger),
         .o_volume(eg_volume)
     );
 
@@ -61,9 +61,10 @@ module noise_generator #(
         .o_expired(timer_expired)
     );
 
-    // エンベロープジェネレータと長さタイマーのトリガー信号
-    assign eg_trigger = i_we_control & i_trigger & timer_expired;
-    assign length_timer_trigger = i_we_control & i_trigger;
+    // 長さタイマーのトリガー信号
+    assign length_timer_trigger = i_we_control & i_trigger & timer_expired;
+    // ノイズジェネレータのトリガー信号
+    assign trigger = i_we_control & i_trigger;
 
     // 更新周期・ランダムネス設定
     always @(posedge i_clk or negedge i_rst_n)
@@ -72,8 +73,6 @@ module noise_generator #(
             clk_div_period <= 0;
             lfsr_mask <= 0;
         end else if (i_we_frequency_randomness) begin
-            // 分周比
-            clk_divider <= i_clock_divider;
             // 分周比周期
             if (i_clock_divider == 0) begin
                 clk_div_period <= (i_clock_shift == 0) ? 0 : (1 << (i_clock_shift - 1));
@@ -93,14 +92,12 @@ module noise_generator #(
             clk_count <= 1;
             clk_div_count <= 1;
             lfsr <= 0;
-            o_signal <= 0;
-        end else if (i_trigger) begin
+        end else if (trigger) begin
             // トリガー
             enable <= 1;
             clk_count <= 1;
             clk_div_count <= 1;
             lfsr <= 0;
-            o_signal <= 0;
         end else if (timer_expired) begin
             // タイマー時間切れ
             enable <= 0;
@@ -108,14 +105,8 @@ module noise_generator #(
             // カウントアップ
             if (clk_count >= CLK_UPDATE_COUNT_PERIOD) begin
                 if (clk_div_count >= clk_div_period) begin
-                    // ノイズ状態更新
-                    if (lfsr[0] == lfsr[1]) begin
-                        lfsr <= (lfsr | lfsr_mask) >> 1;
-                    end else begin
-                        lfsr <= (lfsr & (~lfsr_mask)) >> 1;
-                    end
-                    // 出力
-                    o_signal <= lfsr[0] ? eg_volume : 0;
+                    // LFSR状態更新
+                    lfsr <= (lfsr[0] == lfsr[1]) ? ((lfsr | lfsr_mask) >> 1) : ((lfsr & (~lfsr_mask)) >> 1);
                     clk_div_count <= 1;
                 end else begin
                     clk_div_count <= clk_div_count + 1;
@@ -126,5 +117,8 @@ module noise_generator #(
             end
         end
     end
+
+    // 出力信号
+    assign o_signal = lfsr[0] ? eg_volume : 0;
 
 endmodule
