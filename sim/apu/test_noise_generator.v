@@ -22,6 +22,8 @@ module test_noise_generator;
     reg trigger;
 
     wire [3:0] signal;
+    wire enable;
+    wire dac_enable;
 
     noise_generator #(
         .CLOCK_HZ(65536) // 実際の動作クロックより遅くする（エンベロープジェネレータなどの動作を早めるため）
@@ -41,6 +43,8 @@ module test_noise_generator;
         .i_we_control(we_control),
         .i_length_timer_enable(length_timer_enable),
         .i_trigger(trigger),
+        .o_enable(enable),
+        .o_dac_enable(dac_enable),
         .o_signal(signal)
     );
 
@@ -56,7 +60,8 @@ module test_noise_generator;
             rst_n <= 1;
             #STEP
 
-            `ASSERT_EQ(ng.enable, 0);
+            `ASSERT_EQ(ng.o_enable, 0);
+            `ASSERT_EQ(ng.o_dac_enable, 0);
             `ASSERT_EQ(ng.clk_count, 1);
             `ASSERT_EQ(ng.clk_div_count, 1);
             `ASSERT_EQ(ng.clk_div_period, 0);
@@ -134,7 +139,7 @@ module test_noise_generator;
             we_control <= 0;
 
             if (i_trigger) begin
-                `ASSERT_EQ(ng.enable, 1);
+                `ASSERT_EQ(ng.o_enable, 1);
                 `ASSERT_EQ(ng.clk_count, 1);
                 `ASSERT_EQ(ng.clk_div_count, 1);
                 `ASSERT_EQ(ng.lfsr, 0);
@@ -154,10 +159,28 @@ module test_noise_generator;
             
             #STEP
 
-            `EXPECT_EQ(ng.enable, 0);
+            `EXPECT_EQ(ng.o_enable, 0);
             `EXPECT_EQ(ng.clk_count, 1);
             `EXPECT_EQ(ng.clk_div_count, 1);
             `EXPECT_EQ(ng.lfsr, 0);
+        end
+    endtask
+
+    // DAC無効化したときのテスト
+    task automatic ng_dac_disable_test;
+        begin
+            ng_reset();
+            ng_set_frequency_randomness(0, 0, 0);
+            ng_set_length_timer(0);
+            ng_set_volume_envelope(0, 0, 0);
+            
+            `EXPECT_EQ(ng.o_dac_enable, 0);
+            `EXPECT_EQ(ng.o_enable, 0);
+
+            ng_set_volume_envelope(0, 1, 0);
+
+            `EXPECT_EQ(ng.o_dac_enable, 1);
+            `EXPECT_EQ(ng.o_enable, 0);
         end
     endtask
 
@@ -255,14 +278,14 @@ module test_noise_generator;
             ng_set_length_timer(1);
             ng_set_control(1, 1);
             
-            `ASSERT_EQ(ng.enable, 1);
+            `ASSERT_EQ(ng.o_enable, 1);
             `ASSERT_EQ(ng.timer_expired, 0);
             
             // 時間切れまで待機
             @(posedge ng.timer_expired)
             
             // タイマーが時間切れした瞬間はまだ有効
-            `EXPECT_EQ(ng.enable, 1);
+            `EXPECT_EQ(ng.o_enable, 1);
             last_lfsr = ng.lfsr;
             last_clk_count = ng.clk_count;
             last_clk_div_count = ng.clk_div_count;
@@ -271,7 +294,7 @@ module test_noise_generator;
             #(2 * STEP)
             
             // 無効になっており、最後の状態が保持されている
-            `EXPECT_EQ(ng.enable, 0);
+            `EXPECT_EQ(ng.o_enable, 0);
             `EXPECT_EQ(ng.lfsr, last_lfsr);
             `EXPECT_EQ(ng.clk_count, last_clk_count);
             `EXPECT_EQ(ng.clk_div_count, last_clk_div_count);
@@ -285,6 +308,7 @@ module test_noise_generator;
         clk <= 0;
 
         ng_nontrigger_test();
+        ng_dac_disable_test();
         ng_constant_noise_test(1000, 20);
         ng_fade_noise_test(1000, 20);
         ng_timer_test();

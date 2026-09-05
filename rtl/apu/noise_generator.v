@@ -16,6 +16,8 @@ module noise_generator #(
     input wire i_we_control, // 制御フラグセット
     input wire i_length_timer_enable, // 長さタイマー有効
     input wire i_trigger, // トリガー信号
+    output reg o_enable, // 有効か？
+    output reg o_dac_enable, // DAC有効か？
     output wire [3:0] o_signal // 出力信号
 );
 
@@ -27,7 +29,6 @@ module noise_generator #(
     wire eg_trigger; // エンベロープジェネレータのトリガー信号
     wire length_timer_trigger; // 長さタイマーのトリガー信号
 
-    reg enable; // 有効か？
     reg [15:0] clk_count; // クロックカウント
     reg [15:0] clk_div_count; // 分周比カウント
     reg [15:0] clk_div_period; // 分周比更新周期
@@ -83,25 +84,35 @@ module noise_generator #(
             lfsr_mask <= (i_lfsr_mode) ? 16'h8080 : 16'h8000;
         end
     end
+
+    // DAC有効フラグ設定
+    always @(posedge i_clk or negedge i_rst_n)
+    begin
+        if (!i_rst_n) begin
+            o_dac_enable <= 0;
+        end else if (i_we_volume_envelope) begin
+            o_dac_enable <= (i_initial_volume != 0) | i_volume_delta_dir;
+        end
+    end
     
     // トリガー・カウントアップ
     always @(posedge i_clk or negedge i_rst_n)
     begin
         if (!i_rst_n) begin
-            enable <= 0;
+            o_enable <= 0;
             clk_count <= 1;
             clk_div_count <= 1;
             lfsr <= 0;
+        end else if (timer_expired | !o_dac_enable) begin
+            // タイマー時間切れ・DAC無効
+            o_enable <= 0;
         end else if (trigger) begin
             // トリガー
-            enable <= 1;
+            o_enable <= 1;
             clk_count <= 1;
             clk_div_count <= 1;
             lfsr <= 0;
-        end else if (timer_expired) begin
-            // タイマー時間切れ
-            enable <= 0;
-        end else if (enable) begin
+        end else if (o_enable) begin
             // カウントアップ
             if (clk_count >= CLK_UPDATE_COUNT_PERIOD) begin
                 if (clk_div_count >= clk_div_period) begin
