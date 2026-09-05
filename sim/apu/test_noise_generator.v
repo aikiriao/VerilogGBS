@@ -173,7 +173,7 @@ module test_noise_generator;
 
         clk <= 0;
 
-        ng_simple_trigger(1000, 20);
+        ng_constant_noise_test(1000, 20);
 
         $finish;
     end
