@@ -3,7 +3,18 @@
 `ifndef TEST_VH
 `define TEST_VH
 
-/* 期待値との比較 誤っていた場合はテストベンチを終了 */
+/* TRUEであることを期待 */
+`define ASSERT_TRUE(condition) \
+    if (!(condition)) begin \
+        $display("[  FAILED  ] %s:%0d", `__FILE__, `__LINE__); \
+        $display("             actual   = %b", (condition)); \
+        $finish; \
+    end
+
+/* FALSEであることを期待 */
+`define ASSERT_FALSE(condition) `ASSERT_TRUE(!(condition))
+
+/* 期待値との比較 */
 `define ASSERT_EQ(actual, expected) \
     if ((actual) !== (expected)) begin \
         $display("[  FAILED  ] %s:%0d", `__FILE__, `__LINE__); \
@@ -12,7 +23,7 @@
         $finish; \
     end
 
-/* 期待値と違うこと比較 同じ場合はテストベンチを終了 */
+/* 期待値と違うこと比較 */
 `define ASSERT_NEQ(actual, expected) \
     if ((actual) === (expected)) begin \
         $display("[  FAILED  ] %s:%0d", `__FILE__, `__LINE__); \
@@ -21,7 +32,17 @@
         $finish; \
     end
 
-/* 期待値との比較 誤っていてもテストベンチを継続 */
+/* TRUEであることを期待 */
+`define EXPECT_TRUE(condition) \
+    if (!(condition)) begin \
+        $display("[  FAILED  ] %s:%0d", `__FILE__, `__LINE__); \
+        $display("             actual   = %b", (condition)); \
+    end
+
+/* FALSEであることを期待 */
+`define EXPECT_FALSE(condition) `EXPECT_TRUE(!(condition))
+
+/* 期待値との比較 */
 `define EXPECT_EQ(actual, expected) \
     if ((actual) !== (expected)) begin \
         $display("[  FAILED  ] %s:%0d", `__FILE__, `__LINE__); \
@@ -29,7 +50,7 @@
         $display("             expected = %h", (expected)); \
     end
 
-/* 期待値と違うことを比較 同じでもテストベンチを継続 */
+/* 期待値と違うことを比較 */
 `define EXPECT_NEQ(actual, expected) \
     if ((actual) === (expected)) begin \
         $display("[  FAILED  ] %s:%0d", `__FILE__, `__LINE__); \

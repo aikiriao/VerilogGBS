@@ -24,7 +24,7 @@ module test_noise_generator;
     wire [3:0] signal;
 
     noise_generator #(
-        .CLOCK_HZ(2097152)
+        .CLOCK_HZ(65536) // 実際の動作クロックより遅くする（エンベロープジェネレータなどの動作を早めるため）
     ) ng (
         .i_clk(clk),
         .i_rst_n(rst_n),
@@ -142,18 +142,50 @@ module test_noise_generator;
         end
     endtask
 
-    // 0 or 定数を取るノイズのテスト
+    // トリガーを打たなかったときのテスト
+    task automatic ng_nontrigger_test;
+        begin
+            ng_reset();
+            ng_set_volume_envelope(0, 0, 0);
+            ng_set_frequency_randomness(0, 0, 0);
+            ng_set_length_timer(0);
+            // トリガーしない
+            ng_set_control(0, 0);
+            
+            #STEP
+
+            `EXPECT_EQ(ng.enable, 0);
+            `EXPECT_EQ(ng.clk_count, 1);
+            `EXPECT_EQ(ng.clk_div_count, 1);
+            `EXPECT_EQ(ng.lfsr, 0);
+        end
+    endtask
+
+    // 0 or 定数をとるノイズのテスト
     task automatic ng_constant_noise_test;
         input integer period;
         input integer period_count;
         integer t;
 
         begin
+            // 0（常に無音）のケース
             ng_reset();
-            // 最大振幅を維持
-            ng_set_volume_envelope(4'hF, 1, 0);
+            ng_set_volume_envelope(0, 1, 0);
             ng_set_frequency_randomness(0, 0, 0);
             // 維持時間タイマーは使わずにトリガー
+            ng_set_length_timer(0);
+            ng_set_control(0, 1);
+            
+            for (t = 0; t < period_count; t = t + 1) begin
+                #(period * STEP)
+                `EXPECT_EQ(signal, 0);
+                `EXPECT_NEQ(ng.lfsr, 0);
+            end
+
+            // 最大振幅のケース
+            ng_reset();
+            ng_set_volume_envelope(4'hF, 1, 0);
+            ng_set_frequency_randomness(0, 0, 0);
             ng_set_length_timer(0);
             ng_set_control(0, 1);
             
@@ -167,13 +199,95 @@ module test_noise_generator;
         end
     endtask
 
+    // フェードするノイズのテスト
+    task automatic ng_fade_noise_test;
+        input integer period;
+        input integer period_count;
+        integer t, volume;
+
+        begin
+            // 0から最大まで上がるケース
+            ng_reset();
+            ng_set_volume_envelope(4'h0, 1, 1);
+            ng_set_frequency_randomness(0, 0, 0);
+            // 維持時間タイマーは使わずにトリガー
+            ng_set_length_timer(0);
+            ng_set_control(0, 1);
+            
+            // 非減少を期待
+            volume = 0;
+            for (t = 0; t < period_count; t = t + 1) begin
+                #(period * STEP)
+                `EXPECT_TRUE(volume <= ng.eg_volume);
+                volume = ng.eg_volume;
+                `EXPECT_TRUE((signal === 0) || (signal === ng.eg_volume));
+            end
+            `EXPECT_EQ(ng.eg_volume, 4'hF);
+
+            // 最大から0まで下がるケース
+            ng_reset();
+            ng_set_volume_envelope(4'hF, 0, 1);
+            ng_set_frequency_randomness(0, 0, 0);
+            ng_set_length_timer(0);
+            ng_set_control(0, 1);
+            
+            // 非増加を期待
+            volume = 4'hF;
+            for (t = 0; t < period_count; t = t + 1) begin
+                #(period * STEP)
+                `EXPECT_TRUE(volume >= ng.eg_volume);
+                volume = ng.eg_volume;
+                `EXPECT_TRUE((signal === 0) || (signal === ng.eg_volume));
+            end
+            `EXPECT_EQ(ng.eg_volume, 4'h0);
+        end
+    endtask
+
+    // 長さタイマーのテスト
+    task automatic ng_timer_test;
+        integer last_lfsr, last_clk_count, last_clk_div_count;
+
+        begin
+            ng_reset();
+            ng_set_volume_envelope(4'hF, 1, 0);
+            ng_set_frequency_randomness(0, 0, 0);
+            // タイマーをセットしてトリガー
+            ng_set_length_timer(1);
+            ng_set_control(1, 1);
+            
+            `ASSERT_EQ(ng.enable, 1);
+            `ASSERT_EQ(ng.timer_expired, 0);
+            
+            // 時間切れまで待機
+            @(posedge ng.timer_expired)
+            
+            // タイマーが時間切れした瞬間はまだ有効
+            `EXPECT_EQ(ng.enable, 1);
+            last_lfsr = ng.lfsr;
+            last_clk_count = ng.clk_count;
+            last_clk_div_count = ng.clk_div_count;
+            
+            // 1クロック以降の状態を観測
+            #(2 * STEP)
+            
+            // 無効になっており、最後の状態が保持されている
+            `EXPECT_EQ(ng.enable, 0);
+            `EXPECT_EQ(ng.lfsr, last_lfsr);
+            `EXPECT_EQ(ng.clk_count, last_clk_count);
+            `EXPECT_EQ(ng.clk_div_count, last_clk_div_count);
+        end
+    endtask
+
     initial begin
         $dumpfile("build/test_noise_generator.vcd");
         $dumpvars(0, test_noise_generator);
 
         clk <= 0;
 
+        ng_nontrigger_test();
         ng_constant_noise_test(1000, 20);
+        ng_fade_noise_test(1000, 20);
+        ng_timer_test();
 
         $finish;
     end
