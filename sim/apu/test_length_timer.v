@@ -7,7 +7,8 @@ module test_length_timer;
     reg clk;
     reg rst_n;
     reg enable;
-    reg we;
+    reg we_enable;
+    reg we_length_timer;
     reg trigger;
     reg [7:0] initial_timer_count;
     reg [15:0] timeout;
@@ -19,8 +20,9 @@ module test_length_timer;
     ) timer (
         .i_clk(clk),
         .i_rst_n(rst_n),
-        .i_we(we),
+        .i_we_enable(we_enable),
         .i_enable(enable),
+        .i_we_length_timer(we_length_timer),
         .i_initial_timer_count(initial_timer_count),
         .i_timeout(timeout),
         .i_trigger(trigger),
@@ -47,15 +49,19 @@ module test_length_timer;
             `ASSERT_EQ(timer.clk_count, 16'd1);
 
             // パラメータセット
-            enable <= 1;
             initial_timer_count <= test_initial_timer_count;
             timeout <= test_timeout;
-            we <= 1;
+            we_length_timer <= 1;
             #STEP
-            we <= 0;
-            `ASSERT_EQ(timer.enable, 1);
+            we_length_timer <= 0;
             `ASSERT_EQ(timer.initial_timer_count, test_initial_timer_count);
             `ASSERT_EQ(timer.timeout, test_timeout);
+
+            enable <= 1;
+            we_enable <= 1;
+            #STEP
+            we_enable <= 0;
+            `ASSERT_EQ(timer.enable, 1);
 
             // トリガー
             `ASSERT_EQ(timer.o_expired, 0);

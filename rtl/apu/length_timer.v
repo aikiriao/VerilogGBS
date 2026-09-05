@@ -3,8 +3,9 @@ module length_timer #(
 )(
     input wire i_clk, // クロック
     input wire i_rst_n, // 非同期リセット
-    input wire i_we, // パラメータ書き込み
+    input wire i_we_enable, // 長さタイマー有効フラグ書き込み
     input wire i_enable, // 有効か
+    input wire i_we_length_timer, // 長さタイマーパラメータ書き込み
     input wire [7:0] i_initial_timer_count, // タイマー初期値
     input wire [15:0] i_timeout, // タイムアウト
     input wire i_trigger, // トリガー信号
@@ -20,15 +21,23 @@ module length_timer #(
     reg [15:0] timeout; // タイムアウトカウント
     reg [15:0] clk_count; // クロックカウント
 
-    // 内部レジスタ更新
+    // 有効フラグ更新
     always @(posedge i_clk or negedge i_rst_n)
     begin
         if (!i_rst_n) begin
             enable <= 0;
+        end else if (i_we_enable) begin
+            enable <= i_enable;
+        end
+    end
+
+    // 内部レジスタ更新
+    always @(posedge i_clk or negedge i_rst_n)
+    begin
+        if (!i_rst_n) begin
             initial_timer_count <= 0;
             timeout <= 0;
-        end else if (i_we) begin
-            enable <= i_enable;
+        end else if (i_we_length_timer) begin
             initial_timer_count <= i_initial_timer_count;
             timeout <= i_timeout;
         end
