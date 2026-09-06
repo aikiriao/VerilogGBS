@@ -49,15 +49,15 @@ module test_noise_generator;
     );
 
     always #(STEP/2) begin
-        clk <= ~clk;
+        clk = ~clk;
     end
 
     // リセットタスク
     task automatic ng_reset;
         begin
-            rst_n <= 0;
+            rst_n = 0;
             #STEP
-            rst_n <= 1;
+            rst_n = 1;
             #STEP
 
             `ASSERT_EQ(ng.o_enable, 0);
@@ -75,11 +75,11 @@ module test_noise_generator;
         input [5:0] i_initial_timer;
 
         begin
-            initial_timer <= i_initial_timer;
+            initial_timer = i_initial_timer;
 
-            we_length_timer <= 1;
+            we_length_timer = 1;
             #STEP
-            we_length_timer <= 0;
+            we_length_timer = 0;
 
             `ASSERT_EQ(ng.timer.initial_timer_count, i_initial_timer);
         end
@@ -92,13 +92,13 @@ module test_noise_generator;
         input [2:0] i_volume_sweep_pace;
 
         begin
-            initial_volume <= i_initial_volume;
-            volume_delta_dir <= i_volume_delta_dir;
-            volume_sweep_pace <= i_volume_sweep_pace;
+            initial_volume = i_initial_volume;
+            volume_delta_dir = i_volume_delta_dir;
+            volume_sweep_pace = i_volume_sweep_pace;
 
-            we_volume_envelope <= 1;
+            we_volume_envelope = 1;
             #STEP
-            we_volume_envelope <= 0;
+            we_volume_envelope = 0;
 
             `ASSERT_EQ(ng.eg.initial_volume, i_initial_volume);
             `ASSERT_EQ(ng.eg.volume_delta_dir, i_volume_delta_dir);
@@ -113,13 +113,13 @@ module test_noise_generator;
         input [2:0] i_clock_divider;
 
         begin
-            clock_shift <= i_clock_shift;
-            lfsr_mode <= i_lfsr_mode;
-            clock_divider <= i_clock_divider;
+            clock_shift = i_clock_shift;
+            lfsr_mode = i_lfsr_mode;
+            clock_divider = i_clock_divider;
 
-            we_frequency_randomness <= 1;
+            we_frequency_randomness = 1;
             #STEP
-            we_frequency_randomness <= 0;
+            we_frequency_randomness = 0;
 
             `ASSERT_NEQ(ng.lfsr_mask, 0);
         end
@@ -131,12 +131,12 @@ module test_noise_generator;
         input i_trigger;
 
         begin
-            length_timer_enable <= i_length_timer_enable;
-            trigger <= i_trigger;
+            length_timer_enable = i_length_timer_enable;
+            trigger = i_trigger;
 
-            we_control <= 1;
+            we_control = 1;
             #STEP
-            we_control <= 0;
+            we_control = 0;
 
             if (i_trigger) begin
                 `ASSERT_EQ(ng.o_enable, 1);
@@ -305,7 +305,7 @@ module test_noise_generator;
         $dumpfile("build/test_noise_generator.vcd");
         $dumpvars(0, test_noise_generator);
 
-        clk <= 0;
+        clk = 0;
 
         ng_nontrigger_test();
         ng_dac_disable_test();

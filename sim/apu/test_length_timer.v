@@ -37,9 +37,9 @@ module test_length_timer;
     
         begin
             // リセット
-            rst_n <= 0;
+            rst_n = 0;
             #STEP
-            rst_n <= 1;
+            rst_n = 1;
             #STEP
             `ASSERT_EQ(timer.o_expired, 0);
             `ASSERT_EQ(timer.enable, 0);
@@ -49,25 +49,25 @@ module test_length_timer;
             `ASSERT_EQ(timer.clk_count, 16'd1);
 
             // パラメータセット
-            initial_timer_count <= test_initial_timer_count;
-            timeout <= test_timeout;
-            we_length_timer <= 1;
+            initial_timer_count = test_initial_timer_count;
+            timeout = test_timeout;
+            we_length_timer = 1;
             #STEP
-            we_length_timer <= 0;
+            we_length_timer = 0;
             `ASSERT_EQ(timer.initial_timer_count, test_initial_timer_count);
             `ASSERT_EQ(timer.timeout, test_timeout);
 
-            enable <= 1;
-            we_enable <= 1;
+            enable = 1;
+            we_enable = 1;
             #STEP
-            we_enable <= 0;
+            we_enable = 0;
             `ASSERT_EQ(timer.enable, 1);
 
             // トリガー
             `ASSERT_EQ(timer.o_expired, 0);
-            trigger <= 1;
+            trigger = 1;
             #STEP
-            trigger <= 0;
+            trigger = 0;
 
             // 期待した時間待機
             #(expected_clk_timeout * STEP)
@@ -78,14 +78,14 @@ module test_length_timer;
     endtask
 
     always #(STEP/2) begin
-        clk <= ~clk;
+        clk = ~clk;
     end
 
     initial begin
         $dumpfile("build/test_length_timer.vcd");
         $dumpvars(0, test_length_timer);
 
-        clk <= 0;
+        clk = 0;
 
         // 初期タイマー値を0に固定し、期待した時間でexpiredが立つかチェック
         for (t = 0; t <= 20; t = t + 1) begin

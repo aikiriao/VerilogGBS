@@ -62,10 +62,10 @@ module noise_generator #(
         .o_expired(timer_expired)
     );
 
-    // 長さタイマーのトリガー信号
-    assign length_timer_trigger = i_we_control & i_trigger & timer_expired;
     // ノイズジェネレータのトリガー信号
     assign trigger = i_we_control & i_trigger;
+    // 長さタイマーのトリガー信号
+    assign length_timer_trigger = trigger & timer_expired;
 
     // 更新周期・ランダムネス設定
     always @(posedge i_clk or negedge i_rst_n)

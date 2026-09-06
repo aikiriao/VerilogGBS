@@ -38,9 +38,9 @@ module test_envelope_generator;
     
         begin
             // リセット
-            rst_n <= 0;
+            rst_n = 0;
             #STEP
-            rst_n <= 1;
+            rst_n = 1;
             #STEP
             `ASSERT_EQ(eg.o_volume, 0);
             `ASSERT_EQ(eg.initial_volume, 4'd0);
@@ -49,21 +49,21 @@ module test_envelope_generator;
             `ASSERT_EQ(eg.timer_count, 3'd1);
 
             // パラメータセット
-            initial_volume <= test_initial_volume;
-            volume_delta_dir <= test_volume_delta_dir;
-            volume_sweep_pace <= test_volume_sweep_pace;
-            we <= 1;
+            initial_volume = test_initial_volume;
+            volume_delta_dir = test_volume_delta_dir;
+            volume_sweep_pace = test_volume_sweep_pace;
+            we = 1;
             #STEP
-            we <= 0;
+            we = 0;
             `ASSERT_EQ(eg.initial_volume, test_initial_volume);
             `ASSERT_EQ(eg.volume_delta_dir, test_volume_delta_dir);
             `ASSERT_EQ(eg.volume_sweep_pace, test_volume_sweep_pace);
 
             // トリガー
             `ASSERT_EQ(eg.o_volume, 0);
-            trigger <= 1;
+            trigger = 1;
             #STEP
-            trigger <= 0;
+            trigger = 0;
 
             // 期待した時間待機
             #(wait_duration * STEP)
@@ -73,14 +73,14 @@ module test_envelope_generator;
     endtask
 
     always #(STEP/2) begin
-        clk <= ~clk;
+        clk = ~clk;
     end
 
     initial begin
         $dumpfile("build/test_envelope_generator.vcd");
         $dumpvars(0, test_envelope_generator);
 
-        clk <= 0;
+        clk = 0;
 
         // 即時設定ケース
         for (i = 0; i <= 4'hF; i = i + 1) begin
