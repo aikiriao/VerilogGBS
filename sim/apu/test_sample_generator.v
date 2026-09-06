@@ -193,7 +193,7 @@ module test_sample_generator;
             for (i = 0; i < 16; i = i + 1) begin
                 sg_set_wave_ram(2 * i, {4'h1, 4'h1});
             end
-            // ピッチは7FF（最速）に設定
+            // ピッチは7FF（1クロック更新）に設定
             sg_set_period_low(8'hFF);
             // トリガー
             sg_set_period_high_control(3'h7, 0, 1);
@@ -228,7 +228,7 @@ module test_sample_generator;
                 for (i = 0; i < 16; i = i + 1) begin
                     sg_set_wave_ram(2 * i, {4'hF, 4'hF});
                 end
-                // ピッチは7FF（最速）に設定
+                // ピッチは7FF（1クロック更新）に設定
                 sg_set_period_low(8'hFF);
                 // トリガー
                 sg_set_period_high_control(3'h7, 0, 1);
@@ -257,7 +257,7 @@ module test_sample_generator;
                 pcm2[3:0] = i;
                 sg_set_wave_ram(2 * i, pcm2);
             end
-            // ピッチは7FF（最速）に設定
+            // ピッチは7FF（1クロック更新）に設定
             sg_set_period_low(8'hFF);
             // トリガー
             sg_set_period_high_control(3'h7, 0, 1);
