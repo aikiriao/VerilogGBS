@@ -65,7 +65,7 @@ module pulse_generator #(
         .i_rst_n(i_rst_n),
         .i_we_enable(i_we_period_high_control),
         .i_enable(i_length_timer_enable),
-        .i_we_length_timer(i_we_length_timer_duty_cycle),
+        .i_we_length_timer(i_we_length_timer_duty_ratio),
         .i_initial_timer_count({2'b00, i_initial_timer}),
         .i_timeout(16'd64),
         .i_trigger(length_timer_trigger),
