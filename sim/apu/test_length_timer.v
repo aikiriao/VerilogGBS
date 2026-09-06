@@ -41,7 +41,7 @@ module test_length_timer;
             #STEP
             rst_n = 1;
             #STEP
-            `ASSERT_EQ(timer.o_expired, 0);
+            `ASSERT_EQ(timer.o_expired, 1);
             `ASSERT_EQ(timer.enable, 0);
             `ASSERT_EQ(timer.initial_timer_count, 8'd0);
             `ASSERT_EQ(timer.timer_count, 16'd0);
@@ -64,7 +64,7 @@ module test_length_timer;
             `ASSERT_EQ(timer.enable, 1);
 
             // トリガー
-            `ASSERT_EQ(timer.o_expired, 0);
+            `ASSERT_EQ(timer.o_expired, 1);
             trigger = 1;
             #STEP
             trigger = 0;

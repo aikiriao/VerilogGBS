@@ -102,15 +102,15 @@ module noise_generator #(
             clk_count <= 1;
             clk_div_count <= 1;
             lfsr <= 0;
-        end else if (timer_expired | !o_dac_enable) begin
-            // タイマー時間切れ・DAC無効
-            o_enable <= 0;
         end else if (trigger) begin
             // トリガー
             o_enable <= 1;
             clk_count <= 1;
             clk_div_count <= 1;
             lfsr <= 0;
+        end else if (timer_expired | !o_dac_enable) begin
+            // タイマー時間切れ・DAC無効
+            o_enable <= 0;
         end else if (o_enable) begin
             // カウントアップ
             if (clk_count >= CLK_UPDATE_COUNT_PERIOD) begin

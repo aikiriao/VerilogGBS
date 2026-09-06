@@ -215,6 +215,42 @@ module test_pulse_generator;
         end
     endtask
 
+    // 長さタイマーのテスト
+    task automatic pg_timer_test;
+        integer last_clk_count, last_signal;
+
+        begin
+            pg_reset();
+            pg_set_period_sweep(0, 0, 0);
+            pg_set_volume_envelope(4'hF, 1, 0);
+            // タイマーをセットしてトリガー
+            pg_set_length_timer_duty_ratio(6'h3F, 0); 
+            pg_set_period_low(8'hFF);
+            pg_set_period_high_control(3'h7, 1, 1);
+            
+            `ASSERT_EQ(pg.o_enable, 1);
+            `ASSERT_EQ(pg.timer_expired, 0);
+            
+            // 時間切れまで待機
+            @(posedge pg.timer_expired)
+            
+            // タイマーが時間切れした瞬間はまだ有効
+            `EXPECT_EQ(pg.o_enable, 1);
+
+            #(STEP/2)
+            last_clk_count = pg.clk_count;
+            last_signal = pg.o_signal;
+            
+            // 1クロック以降の状態を観測
+            #(2 * STEP)
+            
+            // 無効になっており、最後の状態が保持されている
+            `EXPECT_EQ(pg.o_enable, 0);
+            `EXPECT_EQ(pg.clk_count, last_clk_count);
+            `EXPECT_EQ(pg.o_signal, last_signal);
+        end
+    endtask
+
     initial begin
         $dumpfile("build/test_pulse_generator.vcd");
         $dumpvars(0, test_pulse_generator);
@@ -222,6 +258,7 @@ module test_pulse_generator;
         clk = 0;
 
         pg_duty_ratio_test();
+        pg_timer_test();
 
         $finish;
     end

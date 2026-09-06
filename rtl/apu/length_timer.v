@@ -47,7 +47,7 @@ module length_timer #(
     always @(posedge i_clk or negedge i_rst_n)
     begin
         if (!i_rst_n) begin
-            o_expired <= 0;
+            o_expired <= 1;
             clk_count <= 1;
             timer_count <= 0;
         end else if (i_trigger) begin

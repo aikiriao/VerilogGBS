@@ -120,9 +120,6 @@ module sample_generator #(
             wave_ram_index <= 0;
             clk_count <= 1;
             clk_sample_update_period <= 1;
-        end else if (timer_expired | !o_dac_enable) begin
-            // タイマー時間切れ・DAC無効
-            o_enable <= 0;
         end else if (trigger) begin
             // トリガー
             o_enable <= 1;
@@ -130,6 +127,9 @@ module sample_generator #(
             clk_count <= 1;
             // トリガーと同時にピッチ周期上位ビットを設定する場合があるためピッチをこの場で計算
             clk_sample_update_period <= 12'd2048 - {i_period_high, period[7:0]};
+        end else if (timer_expired | !o_dac_enable) begin
+            // タイマー時間切れ・DAC無効
+            o_enable <= 0;
         end else if (o_enable) begin
             // カウントアップ
             if (clk_count >= clk_sample_update_period) begin
