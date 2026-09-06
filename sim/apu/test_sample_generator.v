@@ -181,8 +181,6 @@ module test_sample_generator;
 
     // 定数をとる波形の再生テスト
     task automatic sg_constant_sample_test;
-        input integer period;
-        input integer period_count;
         integer i;
 
         begin
@@ -199,9 +197,10 @@ module test_sample_generator;
             sg_set_period_low(8'hFF);
             // トリガー
             sg_set_period_high_control(3'h7, 0, 1);
-
-            for (i = 0; i < period_count; i = i + 1) begin
-                #(period * STEP)
+            
+            // 意図した出力になっているか？念のため2周
+            for (i = 0; i < 64; i = i + 1) begin
+                #STEP
                 `EXPECT_EQ(sg.o_signal, 1);
             end
         end
@@ -244,18 +243,15 @@ module test_sample_generator;
 
     // リニアフェード波形の再生テスト
     task automatic sg_linear_fade_test;
-        input integer period;
-        input integer period_count;
         integer i;
         reg [7:0] pcm2;
 
         begin
-            // 0（常に無音）のケース
             sg_reset();
             sg_set_length_timer(0);
             sg_set_dac_enable(1);
             sg_set_output_level(1); // 最大音量（シフトなし）
-            // 波形RAMにリニアフェード
+            // 波形RAMにリニアフェードをセット
             for (i = 0; i < 16; i = i + 1) begin
                 pcm2[7:4] = i;
                 pcm2[3:0] = i;
@@ -266,9 +262,48 @@ module test_sample_generator;
             // トリガー
             sg_set_period_high_control(3'h7, 0, 1);
 
-            for (i = 0; i < period_count; i = i + 1) begin
-                #(period * STEP)
+            // 意図した出力になっているか？念のため2周
+            for (i = 0; i < 64; i = i + 1) begin
+                #STEP
                 `EXPECT_EQ(sg.o_signal, ((i >> 1) + 1) & 4'hF);
+            end
+        end
+    endtask
+
+    // 周期変更テスト
+    task automatic sg_change_period_test;
+        integer i, j, per;
+        reg [7:0] pcm2;
+
+        begin
+            sg_reset();
+            sg_set_length_timer(0);
+            sg_set_dac_enable(1);
+            sg_set_output_level(1); // 最大音量（シフトなし）
+            // 0,1を繰り返す波形をセット
+            for (i = 0; i < 16; i = i + 1) begin
+                sg_set_wave_ram(2 * i, {4'd0, 4'd1});
+            end
+
+            for (per = 2; per <= 10; per = per + 1) begin
+                // perクロックでサンプル更新されるように設定
+                sg_set_period_low(8'hFF - per + 1);
+                // トリガー
+                sg_set_period_high_control(3'h7, 0, 1);
+
+                // タイミング合わせ
+                // トリガー直後に信号が出ており、かつカウントが1進んでいるので一周期分消化
+                #((per - 1) * STEP)
+                for (i = 0; i < 32; i = i + 1) begin
+                    for (j = 0; j < per; j = j + 1) begin
+                        #STEP
+                        if ((i % 2) == 0) begin
+                            `EXPECT_EQ(sg.o_signal, 0);
+                        end else begin
+                            `EXPECT_EQ(sg.o_signal, 1);
+                        end
+                    end
+                end
             end
         end
     endtask
@@ -279,9 +314,10 @@ module test_sample_generator;
 
         clk = 0;
 
-        sg_constant_sample_test(1, 4 * 32);
-        sg_linear_fade_test(1, 4 * 32);
+        sg_constant_sample_test();
+        sg_linear_fade_test();
         sg_level_test();
+        sg_change_period_test();
 
         $finish;
     end
