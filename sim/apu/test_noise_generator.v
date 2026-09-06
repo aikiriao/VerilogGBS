@@ -13,7 +13,7 @@ module test_noise_generator;
 
     reg [5:0] initial_timer;
     reg [3:0] initial_volume;
-    reg volume_delta_dir;
+    reg volume_delta_direction;
     reg [2:0] volume_sweep_pace;
     reg [3:0] clock_shift;
     reg lfsr_mode;
@@ -34,7 +34,7 @@ module test_noise_generator;
         .i_initial_timer(initial_timer),
         .i_we_volume_envelope(we_volume_envelope),
         .i_initial_volume(initial_volume),
-        .i_volume_delta_dir(volume_delta_dir),
+        .i_volume_delta_direction(volume_delta_direction),
         .i_volume_sweep_pace(volume_sweep_pace),
         .i_we_frequency_randomness(we_frequency_randomness),
         .i_clock_shift(clock_shift),
@@ -88,12 +88,12 @@ module test_noise_generator;
     // エンベロープジェネレータの設定タスク
     task automatic ng_set_volume_envelope;
         input [3:0] i_initial_volume;
-        input i_volume_delta_dir;
+        input i_volume_delta_direction;
         input [2:0] i_volume_sweep_pace;
 
         begin
             initial_volume = i_initial_volume;
-            volume_delta_dir = i_volume_delta_dir;
+            volume_delta_direction = i_volume_delta_direction;
             volume_sweep_pace = i_volume_sweep_pace;
 
             we_volume_envelope = 1;
@@ -101,7 +101,7 @@ module test_noise_generator;
             we_volume_envelope = 0;
 
             `ASSERT_EQ(ng.eg.initial_volume, i_initial_volume);
-            `ASSERT_EQ(ng.eg.volume_delta_dir, i_volume_delta_dir);
+            `ASSERT_EQ(ng.eg.volume_delta_direction, i_volume_delta_direction);
             `ASSERT_EQ(ng.eg.volume_sweep_pace, i_volume_sweep_pace);
         end
     endtask

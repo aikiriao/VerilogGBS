@@ -9,7 +9,7 @@ module test_envelope_generator;
     reg enable;
     reg we;
     reg trigger;
-    reg volume_delta_dir;
+    reg volume_delta_direction;
     reg [3:0] initial_volume;
     reg [2:0] volume_sweep_pace;
     wire [3:0] volume;
@@ -21,7 +21,7 @@ module test_envelope_generator;
         .i_clk(clk),
         .i_rst_n(rst_n),
         .i_we(we),
-        .i_volume_delta_dir(volume_delta_dir),
+        .i_volume_delta_direction(volume_delta_direction),
         .i_initial_volume(initial_volume),
         .i_volume_sweep_pace(volume_sweep_pace),
         .i_trigger(trigger),
@@ -31,7 +31,7 @@ module test_envelope_generator;
     // タイマーのテストケース
     task automatic eg_test_case;
         input [3:0] test_initial_volume;
-        input test_volume_delta_dir;
+        input test_volume_delta_direction;
         input [2:0] test_volume_sweep_pace;
         input integer wait_duration;
         input [3:0] expected_volume;
@@ -44,19 +44,19 @@ module test_envelope_generator;
             #STEP
             `ASSERT_EQ(eg.o_volume, 0);
             `ASSERT_EQ(eg.initial_volume, 4'd0);
-            `ASSERT_EQ(eg.volume_delta_dir, 0);
+            `ASSERT_EQ(eg.volume_delta_direction, 0);
             `ASSERT_EQ(eg.volume_sweep_pace, 3'd0);
             `ASSERT_EQ(eg.timer_count, 3'd1);
 
             // パラメータセット
             initial_volume = test_initial_volume;
-            volume_delta_dir = test_volume_delta_dir;
+            volume_delta_direction = test_volume_delta_direction;
             volume_sweep_pace = test_volume_sweep_pace;
             we = 1;
             #STEP
             we = 0;
             `ASSERT_EQ(eg.initial_volume, test_initial_volume);
-            `ASSERT_EQ(eg.volume_delta_dir, test_volume_delta_dir);
+            `ASSERT_EQ(eg.volume_delta_direction, test_volume_delta_direction);
             `ASSERT_EQ(eg.volume_sweep_pace, test_volume_sweep_pace);
 
             // トリガー

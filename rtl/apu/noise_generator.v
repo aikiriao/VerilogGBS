@@ -7,7 +7,7 @@ module noise_generator #(
     input wire [5:0] i_initial_timer, // 長さタイマーの初期タイマー値
     input wire i_we_volume_envelope, // エンベロープセット
     input wire [3:0] i_initial_volume, // 初期ボリューム
-    input wire i_volume_delta_dir, // ボリューム更新方向（0: -1、1: 1）
+    input wire i_volume_delta_direction, // ボリューム更新方向（0: -1、1: 1）
     input wire [2:0] i_volume_sweep_pace, // ボリューム更新スピード
     input wire i_we_frequency_randomness, // 更新頻度・ランダムネスセット
     input wire [3:0] i_clock_shift, // クロックシフト
@@ -26,7 +26,6 @@ module noise_generator #(
 
     wire [3:0] eg_volume; // 出力ボリューム
     wire timer_expired; // 時間切れか？
-    wire eg_trigger; // エンベロープジェネレータのトリガー信号
     wire length_timer_trigger; // 長さタイマーのトリガー信号
 
     reg [15:0] clk_count; // クロックカウント
@@ -41,7 +40,7 @@ module noise_generator #(
         .i_clk(i_clk),
         .i_rst_n(i_rst_n),
         .i_we(i_we_volume_envelope),
-        .i_volume_delta_dir(i_volume_delta_dir),
+        .i_volume_delta_direction(i_volume_delta_direction),
         .i_initial_volume(i_initial_volume),
         .i_volume_sweep_pace(i_volume_sweep_pace),
         .i_trigger(trigger),
@@ -91,7 +90,7 @@ module noise_generator #(
         if (!i_rst_n) begin
             o_dac_enable <= 0;
         end else if (i_we_volume_envelope) begin
-            o_dac_enable <= (i_initial_volume != 0) | i_volume_delta_dir;
+            o_dac_enable <= (i_initial_volume != 0) | i_volume_delta_direction;
         end
     end
     
