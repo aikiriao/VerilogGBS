@@ -13,6 +13,7 @@ module test_length_timer;
     reg [7:0] initial_timer_count;
     reg [15:0] timeout;
     wire expired;
+    wire timer2_expired;
     integer t, i;
 
     length_timer #(
@@ -27,6 +28,21 @@ module test_length_timer;
         .i_timeout(timeout),
         .i_trigger(trigger),
         .o_expired(expired)
+    );
+
+    // 2倍のクロック周波数を持つタイマー
+    length_timer #(
+        .CLOCK_HZ(512)
+    ) timer2 (
+        .i_clk(clk),
+        .i_rst_n(rst_n),
+        .i_we_enable(we_enable),
+        .i_enable(enable),
+        .i_we_length_timer(we_length_timer),
+        .i_initial_timer_count(initial_timer_count),
+        .i_timeout(timeout),
+        .i_trigger(trigger),
+        .o_expired(timer2_expired)
     );
 
     // タイマーのテストケース
@@ -47,6 +63,12 @@ module test_length_timer;
             `ASSERT_EQ(timer.timer_count, 16'd0);
             `ASSERT_EQ(timer.timeout, 16'd0);
             `ASSERT_EQ(timer.clk_count, 16'd1);
+            `ASSERT_EQ(timer2.o_expired, 1);
+            `ASSERT_EQ(timer2.enable, 0);
+            `ASSERT_EQ(timer2.initial_timer_count, 8'd0);
+            `ASSERT_EQ(timer2.timer_count, 16'd0);
+            `ASSERT_EQ(timer2.timeout, 16'd0);
+            `ASSERT_EQ(timer2.clk_count, 16'd1);
 
             // パラメータセット
             initial_timer_count = test_initial_timer_count;
@@ -56,15 +78,19 @@ module test_length_timer;
             we_length_timer = 0;
             `ASSERT_EQ(timer.initial_timer_count, test_initial_timer_count);
             `ASSERT_EQ(timer.timeout, test_timeout);
+            `ASSERT_EQ(timer2.initial_timer_count, test_initial_timer_count);
+            `ASSERT_EQ(timer2.timeout, test_timeout);
 
             enable = 1;
             we_enable = 1;
             #STEP
             we_enable = 0;
             `ASSERT_EQ(timer.enable, 1);
+            `ASSERT_EQ(timer2.enable, 1);
 
             // トリガー
             `ASSERT_EQ(timer.o_expired, 1);
+            `ASSERT_EQ(timer2.o_expired, 1);
             trigger = 1;
             #STEP
             trigger = 0;
@@ -74,6 +100,17 @@ module test_length_timer;
             // 時間切れになっていることをチェック
             `EXPECT_EQ(timer.o_expired, 1);
             `EXPECT_EQ(expired, 1);
+            // timer2は時間切れになっていないことをチェック
+            `EXPECT_EQ(timer2.o_expired, 0);
+            `EXPECT_EQ(timer2_expired, 0);
+
+            // 今一度同じ時間待機
+            #(expected_clk_timeout * STEP)
+            // 時間切れになっていることをチェック
+            `EXPECT_EQ(timer.o_expired, 1);
+            `EXPECT_EQ(expired, 1);
+            `EXPECT_EQ(timer2.o_expired, 1);
+            `EXPECT_EQ(timer2_expired, 1);
         end
     endtask
 
