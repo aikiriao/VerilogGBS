@@ -33,7 +33,6 @@ module sample_generator #(
     reg [15:0] clk_sample_update_period; // サンプル更新周期
     reg [2:0] level_shift; // 音量シフト量
     reg [10:0] period; // 周期
-    reg period_changed; // 周期が変更されたか
     reg [3:0] wave_ram[0:31]; // 波形RAM 4bit x 32サンプル
     reg [4:0] wave_ram_index; // 波形RAM参照インデックス
 
@@ -87,13 +86,10 @@ module sample_generator #(
     begin
         if (!i_rst_n) begin
             period <= 0;
-            period_changed <= 0;
         end else if (i_we_period_low) begin
             period <= {period[10:8], i_period_low};
-            period_changed <= 1;
         end else if (i_we_period_high_control) begin
             period <= {i_period_high, period[7:0]};
-            period_changed <= 1;
         end
     end
     
@@ -135,10 +131,7 @@ module sample_generator #(
             if (clk_count >= clk_sample_update_period) begin
                 wave_ram_index <= wave_ram_index + 1;
                 // 周期変更はサンプル更新後
-                if (period_changed) begin
-                    clk_sample_update_period <= 12'd2048 - period;
-                    period_changed <= 0;
-                end
+                clk_sample_update_period <= 12'd2048 - period;
                 clk_count <= 1;
             end else begin
                 clk_count <= clk_count + 1;

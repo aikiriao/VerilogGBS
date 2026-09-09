@@ -75,7 +75,6 @@ module test_pulse_generator;
             `ASSERT_EQ(pg.clk_count, 1);
             `ASSERT_EQ(pg.clk_sample_update_period, 1);
             `ASSERT_EQ(pg.period, 0);
-            `ASSERT_EQ(pg.period_changed, 0);
             `ASSERT_EQ(pg.period_update_enable, 0);
             `ASSERT_EQ(pg.period_sweep_direction, 0);
             `ASSERT_EQ(pg.period_sweep_step, 0);

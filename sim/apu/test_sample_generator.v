@@ -72,7 +72,6 @@ module test_sample_generator;
             `ASSERT_EQ(sg.clk_sample_update_period, 1);
             `ASSERT_EQ(sg.level_shift, 4);
             `ASSERT_EQ(sg.period, 0);
-            `ASSERT_EQ(sg.period_changed, 0);
             for (i = 0; i < 32; i = i + 1) begin
                 `ASSERT_EQ(sg.wave_ram[i], 0);
             end

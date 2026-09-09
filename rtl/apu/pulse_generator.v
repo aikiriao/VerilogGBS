@@ -36,7 +36,6 @@ module pulse_generator #(
     reg [15:0] clk_count; // クロックカウント
     reg [15:0] clk_sample_update_period; // サンプル更新周期
     reg [10:0] period; // 周期
-    reg period_changed; // 周期が変更されたか
     reg period_update_enable; // 周期変更するか
     reg period_sweep_direction; // 周期変更方向（0: 正, 1: 負）
     reg [7:0] period_sweep_step; // 周期変更ステップ
@@ -129,13 +128,10 @@ module pulse_generator #(
     begin
         if (!i_rst_n) begin
             period <= 0;
-            period_changed <= 0;
         end else if (i_we_period_low) begin
             period <= {period[10:8], i_period_low};
-            period_changed <= 1;
         end else if (i_we_period_high_control) begin
             period <= {i_period_high, period[7:0]};
-            period_changed <= 1;
         end
     end
 
@@ -186,10 +182,7 @@ module pulse_generator #(
             if (clk_count >= clk_sample_update_period) begin
                 pulse_table_index <= pulse_table_index + 1;
                 // 周期変更はサンプル更新後
-                if (period_changed) begin
-                    clk_sample_update_period <= 12'd2048 - period;
-                    period_changed <= 0;
-                end
+                clk_sample_update_period <= 12'd2048 - period;
                 clk_count <= 1;
             end else begin
                 clk_count <= clk_count + 1;
