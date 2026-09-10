@@ -50,8 +50,15 @@ module apu #(
     wire signed [7:0] dac_signal[0:3];
     wire signed [7:0] mixed_l_signal;
     wire signed [7:0] mixed_r_signal;
-    reg [HPF_COEFFIENT_BIT_WIDTH - 1:0] hpf_buffer_l;
-    reg [HPF_COEFFIENT_BIT_WIDTH - 1:0] hpf_buffer_r;
+    wire signed [7:0] l_signal;
+    wire signed [7:0] r_signal;
+    wire signed [SIGNAL_BIT_WIDTH-1:0] ex_l_signal;
+    wire signed [SIGNAL_BIT_WIDTH-1:0] ex_r_signal;
+    wire signed [SIGNAL_BIT_WIDTH-1:0] out_l;
+    wire signed [SIGNAL_BIT_WIDTH-1:0] out_r;
+
+    reg [HPF_COEFFIENT_BIT_WIDTH-1:0] hpf_buffer_l;
+    reg [HPF_COEFFIENT_BIT_WIDTH-1:0] hpf_buffer_r;
 
     // APUレジスタ
     reg [7:0] nr10_ch1_sweep;
@@ -340,10 +347,10 @@ module apu #(
     assign r_signal = apply_master_volume(nr52_audio_master_control[3:0], mixed_r_signal);
 
     // ビット幅拡張・HPF適用
-    wire signed [SIGNAL_BIT_WIDTH - 1:0] ex_l_signal = l_signal << (SIGNAL_BIT_WIDTH - 8);
-    wire signed [SIGNAL_BIT_WIDTH - 1:0] ex_r_signal = r_signal << (SIGNAL_BIT_WIDTH - 8);
-    wire signed [SIGNAL_BIT_WIDTH - 1:0] out_l = ex_l_signal - hpf_buffer_l;
-    wire signed [SIGNAL_BIT_WIDTH - 1:0] out_r = ex_r_signal - hpf_buffer_r;
+    assign ex_l_signal = l_signal << (SIGNAL_BIT_WIDTH - 8);
+    assign ex_r_signal = r_signal << (SIGNAL_BIT_WIDTH - 8);
+    assign out_l = ex_l_signal - hpf_buffer_l;
+    assign out_r = ex_r_signal - hpf_buffer_r;
     always @(posedge i_clk or negedge i_rst_n)
     begin
         if (!i_rst_n) begin
