@@ -1,5 +1,6 @@
 module apu #(
-    parameter CLOCK_HZ = 2097152 // クロック動作周波数
+    parameter CLOCK_HZ = 2097152, // クロック動作周波数
+    parameter SIGNAL_BIT_WIDTH = 16 // 出力信号のビット深度
 )(
     input wire i_clk, // クロック
     input wire i_rst_n, // 非同期リセット
@@ -8,15 +9,14 @@ module apu #(
     input wire [15:0] i_address, // アドレス
     input wire [7:0] i_w_data, // 書き込みデータ
     output wire [7:0] o_r_data, // 読み込みデータ
-    output wire signed [7:0] o_l_signal, // 左チャンネル信号
-    output wire signed [7:0] o_r_signal // 右チャンネル信号
+    output reg signed [SIGNAL_BIT_WIDTH - 1:0] o_l_signal, // 左チャンネル信号
+    output reg signed [SIGNAL_BIT_WIDTH - 1:0] o_r_signal // 右チャンネル信号
 );
 
     // レジスタアドレス定義
     `include "sm83_register_address.vh"
 
-    localparam HPF_COEFFIENT_BIT_WIDTH = 16; // HPF係数のビット深度
-    localparam HPF_COEFFIENT = (0.999958 * (1 << (HPF_COEFFIENT_BIT_WIDTH - 1))); // HPF係数
+    localparam HPF_COEFFIENT = 0.999958 * (1 << (SIGNAL_BIT_WIDTH - 1)); // HPF係数
 
     // 各レジスタの書き込み信号
     wire nr10_write = i_we_register & (i_address == HWREG_NR10_CHANNEL1_SWEEP);
@@ -45,8 +45,13 @@ module apu #(
     // 各チャンネルの出力フラグと出力信号
     wire [3:0] ch_enable;
     wire [3:0] ch_dac_enable;
-    reg [3:0] ch_signal[0:3];
+    wire [3:0] ch_signal[0:3];
     wire [7:0] r_sg_wave_pcm;
+    wire signed [7:0] dac_signal[0:3];
+    wire signed [7:0] mixed_l_signal;
+    wire signed [7:0] mixed_r_signal;
+    reg [HPF_COEFFIENT_BIT_WIDTH - 1:0] hpf_buffer_l;
+    reg [HPF_COEFFIENT_BIT_WIDTH - 1:0] hpf_buffer_r;
 
     // APUレジスタ
     reg [7:0] nr10_ch1_sweep;
@@ -285,5 +290,73 @@ module apu #(
 
     // レジスタ読み取り
     assign o_r_data = read_register(i_address);
+
+    // DAC（4bit符号なし -> 8bit符号付き -15, ..., -1, 0, 1, ..., 15 にマップされる）
+    function automatic signed [7:0] dac;
+        input dac_enable;
+        input [3:0] in;
+
+        dac = dac_enable ? (8'd15 - $signed(in << 1)) : 0;
+    endfunction
+
+    // DACに通す
+    assign dac_signal[0] = dac(ch_dac_enable[0], ch_enable[0] ? ch_signal[0] : 4'd0);
+    assign dac_signal[1] = dac(ch_dac_enable[1], ch_enable[1] ? ch_signal[1] : 4'd0);
+    assign dac_signal[2] = dac(ch_dac_enable[2], ch_enable[2] ? ch_signal[2] : 4'd0);
+    assign dac_signal[3] = dac(ch_dac_enable[3], ch_enable[3] ? ch_signal[3] : 4'd0);
+
+    // ミックス・パンニング・マスターボリューム適用
+    assign mixed_l_signal =
+        (nr51_sound_panning[0] ? dac_signal[0] : 8'd0)
+        + (nr51_sound_panning[1] ? dac_signal[1] : 8'd0)
+        + (nr51_sound_panning[2] ? dac_signal[2] : 8'd0)
+        + (nr51_sound_panning[3] ? dac_signal[3] : 8'd0);
+    assign mixed_r_signal =
+        (nr51_sound_panning[4] ? dac_signal[0] : 8'd0)
+        + (nr51_sound_panning[5] ? dac_signal[1] : 8'd0)
+        + (nr51_sound_panning[6] ? dac_signal[2] : 8'd0)
+        + (nr51_sound_panning[7] ? dac_signal[3] : 8'd0);
+
+    // マスターボリューム適用
+    function automatic signed [7:0] apply_master_volume;
+        input [2:0] volume;
+        input [7:0] in;
+
+        case (volume)
+            3'd0: apply_master_volume = in >> 3; // 1/8
+            3'd1: apply_master_volume = in >> 2; // 2/8 = 1/4
+            3'd2: apply_master_volume = ((in << 1) + in) >> 3; // 3/8
+            3'd3: apply_master_volume = in >> 1; // 4/8 = 1/2
+            3'd4: apply_master_volume = ((in << 2) + in) >> 3; // 5/8
+            3'd5: apply_master_volume = ((in << 1) + in) >> 2; // 6/8 = 3/4
+            3'd6: apply_master_volume = ((in << 2) + (in << 1) + in) >> 3; // 7/8
+            3'd7: apply_master_volume = in; // 8/8 = 1
+            default: apply_master_volume = 0;
+        endcase
+    endfunction
+
+    // マスターボリュームを適用したデジタル出力
+    assign l_signal = apply_master_volume(nr52_audio_master_control[6:4], mixed_l_signal);
+    assign r_signal = apply_master_volume(nr52_audio_master_control[3:0], mixed_r_signal);
+
+    // ビット幅拡張・HPF適用
+    wire signed [SIGNAL_BIT_WIDTH - 1:0] ex_l_signal = l_signal << (SIGNAL_BIT_WIDTH - 8);
+    wire signed [SIGNAL_BIT_WIDTH - 1:0] ex_r_signal = r_signal << (SIGNAL_BIT_WIDTH - 8);
+    wire signed [SIGNAL_BIT_WIDTH - 1:0] out_l = ex_l_signal - hpf_buffer_l;
+    wire signed [SIGNAL_BIT_WIDTH - 1:0] out_r = ex_r_signal - hpf_buffer_r;
+    always @(posedge i_clk or negedge i_rst_n)
+    begin
+        if (!i_rst_n) begin
+            o_l_signal <= 0;
+            o_r_signal <= 0;
+            hpf_buffer_l <= 0;
+            hpf_buffer_r <= 0;
+        end else begin
+            o_l_signal <= out_l;
+            o_r_signal <= out_r;
+            hpf_buffer_l <= ex_l_signal - ((out_l * HPF_COEFFIENT) >>> (SIGNAL_BIT_WIDTH - 1));
+            hpf_buffer_r <= ex_r_signal - ((out_r * HPF_COEFFIENT) >>> (SIGNAL_BIT_WIDTH - 1));
+        end
+    end
 
 endmodule
