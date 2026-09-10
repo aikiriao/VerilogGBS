@@ -69,7 +69,7 @@ localparam [15:0] HWREG_NR32_CHANNEL3_OUTPUT_LEVEL = 16'hFF1C;
 // チャンネル3周期下位ビット
 localparam [15:0] HWREG_NR33_CHANNEL3_PERIOD_LOW = 16'hFF1D;
 // チャンネル3周期上位ビット・制御ビット
-localparam [15:0] HWREG_NR33_CHANNEL3_PERIOD_HIGH_CONTROL = 16'hFF1E;
+localparam [15:0] HWREG_NR34_CHANNEL3_PERIOD_HIGH_CONTROL = 16'hFF1E;
 // チャンネル4長さタイマー
 localparam [15:0] HWREG_NR41_CHANNEL4_LENGTH_TIMER = 16'hFF20;
 // チャンネル4ボリューム・エンベロープ

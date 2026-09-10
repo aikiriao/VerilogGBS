@@ -18,6 +18,7 @@ module sample_generator #(
     input wire [2:0] i_period_high, // 周期上位ビット
     input wire i_length_timer_enable, // 長さタイマー有効
     input wire i_trigger, // トリガー信号
+    output wire o_wave_2pcm, // 読み取ったサンプル値
     output reg o_enable, // 有効か？
     output reg o_dac_enable, // DAC有効か？
     output wire [3:0] o_signal // 出力信号
@@ -138,6 +139,9 @@ module sample_generator #(
             end
         end
     end
+
+    // 波形読み取り値
+    assign o_wave_2pcm = wave_ram[i_wave_even_index];
 
     // 出力信号
     assign o_signal = wave_ram[wave_ram_index] >> level_shift;
