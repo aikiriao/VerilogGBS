@@ -298,12 +298,12 @@ module apu #(
     // レジスタ読み取り
     assign o_r_data = read_register(i_address);
 
-    // DAC（4bit符号なし -> 8bit符号付き -15, ..., -1, 0, 1, ..., 15 にマップされる）
+    // DAC（4bit符号なし -> 符号反転した8bit符号付き -15, ..., -1, 0, 1, ..., 15 にマップされる）
     function automatic signed [7:0] dac;
         input dac_enable;
         input [3:0] in;
 
-        dac = dac_enable ? (8'd15 - $signed(in << 1)) : 0;
+        dac = dac_enable ? (8'd15 - $signed({4'b0000, in}) <<< 1) : 0;
     endfunction
 
     // DACに通す
@@ -330,25 +330,25 @@ module apu #(
         input [7:0] in;
 
         case (volume)
-            3'd0: apply_master_volume = in >> 3; // 1/8
-            3'd1: apply_master_volume = in >> 2; // 2/8 = 1/4
-            3'd2: apply_master_volume = ((in << 1) + in) >> 3; // 3/8
-            3'd3: apply_master_volume = in >> 1; // 4/8 = 1/2
-            3'd4: apply_master_volume = ((in << 2) + in) >> 3; // 5/8
-            3'd5: apply_master_volume = ((in << 1) + in) >> 2; // 6/8 = 3/4
-            3'd6: apply_master_volume = ((in << 2) + (in << 1) + in) >> 3; // 7/8
-            3'd7: apply_master_volume = in; // 8/8 = 1
+            3'd0: apply_master_volume = in >>> 3;
+            3'd1: apply_master_volume = (2 * in) >>> 3;
+            3'd2: apply_master_volume = (3 * in) >>> 3;
+            3'd3: apply_master_volume = (4 * in) >>> 3;
+            3'd4: apply_master_volume = (5 * in) >>> 3;
+            3'd5: apply_master_volume = (6 * in) >>> 3;
+            3'd6: apply_master_volume = (7 * in) >>> 3;
+            3'd7: apply_master_volume = in;
             default: apply_master_volume = 0;
         endcase
     endfunction
 
-    // マスターボリュームを適用したデジタル出力
+    // マスターボリューム適用
     assign l_signal = apply_master_volume(nr52_audio_master_control[6:4], mixed_l_signal);
     assign r_signal = apply_master_volume(nr52_audio_master_control[3:0], mixed_r_signal);
 
     // ビット幅拡張・HPF適用
-    assign ex_l_signal = l_signal << (SIGNAL_BIT_WIDTH - 8);
-    assign ex_r_signal = r_signal << (SIGNAL_BIT_WIDTH - 8);
+    assign ex_l_signal = l_signal <<< (SIGNAL_BIT_WIDTH - 8);
+    assign ex_r_signal = r_signal <<< (SIGNAL_BIT_WIDTH - 8);
     assign out_l = ex_l_signal - hpf_buffer_l;
     assign out_r = ex_r_signal - hpf_buffer_r;
     always @(posedge i_clk or negedge i_rst_n)
