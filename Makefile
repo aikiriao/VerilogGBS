@@ -1,5 +1,6 @@
 IVERILOG := iverilog
 VVP := vvp
+VERILATOR := verilator
 RM_RF := rm -rf
 
 BUILD_DIR := build
@@ -26,6 +27,11 @@ $(BUILD_DIR):
 
 # 個別テスト
 test_%: $(BUILD_DIR)
+	$(VERILATOR) \
+		--lint-only -Wall --default-language 1364-2001 -Wno-MULTITOP -Wno-UNUSEDPARAM --no-sched-zero-delay \
+		-Irtl/include \
+		-Isim/include \
+	   	-f $(FILELIST_DIR)/test_$*.f || :
 	$(IVERILOG) \
 		-g2001 -Wall \
 		-s test_$* \

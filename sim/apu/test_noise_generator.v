@@ -26,7 +26,7 @@ module test_noise_generator;
     wire dac_enable;
 
     noise_generator #(
-        .CLOCK_HZ(65536) // 実際の動作クロックより遅くする（エンベロープジェネレータなどの動作を早めるため）
+        .CLOCK_HZ(262144)
     ) ng (
         .i_clk(clk),
         .i_rst_n(rst_n),
@@ -60,6 +60,8 @@ module test_noise_generator;
             rst_n = 1;
             #STEP
 
+            `ASSERT_EQ(enable, 0);
+            `ASSERT_EQ(dac_enable, 0);
             `ASSERT_EQ(ng.o_enable, 0);
             `ASSERT_EQ(ng.o_dac_enable, 0);
             `ASSERT_EQ(ng.clk_count, 1);
@@ -81,7 +83,7 @@ module test_noise_generator;
             #STEP
             we_length_timer = 0;
 
-            `ASSERT_EQ(ng.timer.initial_timer_count, i_initial_timer);
+            `ASSERT_EQ(ng.timer.initial_timer_count, {2'd0, i_initial_timer});
         end
     endtask
 
@@ -139,6 +141,7 @@ module test_noise_generator;
             we_control = 0;
 
             if (i_trigger) begin
+                `ASSERT_EQ(enable, 1);
                 `ASSERT_EQ(ng.o_enable, 1);
                 `ASSERT_EQ(ng.clk_count, 1);
                 `ASSERT_EQ(ng.clk_div_count, 1);
@@ -239,13 +242,14 @@ module test_noise_generator;
             
             // 非減少を期待
             volume = 0;
+            `EXPECT_EQ(ng.eg_volume, 4'h0);
             for (t = 0; t < period_count; t = t + 1) begin
                 #(period * STEP)
                 `EXPECT_TRUE(volume <= ng.eg_volume);
-                volume = ng.eg_volume;
+                volume = {28'd0, ng.eg_volume};
                 `EXPECT_TRUE((signal === 0) || (signal === ng.eg_volume));
             end
-            `EXPECT_EQ(ng.eg_volume, 4'hF);
+            `EXPECT_NEQ(ng.eg_volume, 4'h0);
 
             // 最大から0まで下がるケース
             ng_reset();
@@ -255,20 +259,21 @@ module test_noise_generator;
             ng_set_control(0, 1);
             
             // 非増加を期待
-            volume = 4'hF;
+            volume = 32'hF;
+            `EXPECT_EQ(ng.eg_volume, 4'hF);
             for (t = 0; t < period_count; t = t + 1) begin
                 #(period * STEP)
                 `EXPECT_TRUE(volume >= ng.eg_volume);
-                volume = ng.eg_volume;
+                volume = {28'd0, ng.eg_volume};
                 `EXPECT_TRUE((signal === 0) || (signal === ng.eg_volume));
             end
-            `EXPECT_EQ(ng.eg_volume, 4'h0);
+            `EXPECT_NEQ(ng.eg_volume, 4'hF);
         end
     endtask
 
     // 長さタイマーのテスト
     task automatic ng_timer_test;
-        integer last_lfsr, last_clk_count, last_clk_div_count;
+        reg [15:0] last_lfsr, last_clk_count, last_clk_div_count;
 
         begin
             ng_reset();

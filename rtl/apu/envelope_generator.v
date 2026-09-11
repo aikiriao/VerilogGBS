@@ -14,10 +14,11 @@ module envelope_generator #(
 );
 
     localparam APU_ENVELOPE_SWEEP_HZ = 64; // エンベロープジェネレータの更新頻度
-    localparam CLK_UPDATE_COUNT_PERIOD = CLOCK_HZ / APU_ENVELOPE_SWEEP_HZ; // クロックの更新周期
+    localparam CLK_UPDATE_COUNT_PERIOD_INT = CLOCK_HZ / APU_ENVELOPE_SWEEP_HZ;
+    localparam [15:0] CLK_UPDATE_COUNT_PERIOD = CLK_UPDATE_COUNT_PERIOD_INT[15:0]; // クロックの更新周期
 
     reg volume_delta_direction; // ボリューム更新方向
-    reg [4:0] initial_volume; // ボリューム初期値
+    reg [3:0] initial_volume; // ボリューム初期値
     reg [2:0] volume_sweep_pace; // ボリューム更新スピード（0は即時設定）
     reg [15:0] clk_count; // クロックカウント
     reg [2:0] timer_count; // タイマーカウント

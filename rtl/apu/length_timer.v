@@ -15,7 +15,8 @@ module length_timer #(
 );
 
     localparam APU_LENGTH_TIMER_UPDATE_PERIOD_HZ = 256; // 持続時間タイマーの更新頻度
-    localparam CLK_UPDATE_COUNT_PERIOD = CLOCK_HZ / APU_LENGTH_TIMER_UPDATE_PERIOD_HZ; // クロックの更新周期
+    localparam CLK_UPDATE_COUNT_PERIOD_INT = CLOCK_HZ / APU_LENGTH_TIMER_UPDATE_PERIOD_HZ;
+    localparam [15:0] CLK_UPDATE_COUNT_PERIOD = CLK_UPDATE_COUNT_PERIOD_INT[15:0]; // クロックの更新周期
 
     reg enable; // タイマー有効か
     reg [7:0] initial_timer_count; // 長さタイマー初期値
@@ -56,7 +57,7 @@ module length_timer #(
             // トリガー
             o_expired <= 0;
             clk_count <= 1;
-            timer_count <= initial_timer_count;
+            timer_count <= {8'd0, initial_timer_count};
         end else if (enable & !o_expired) begin
             // カウントアップ
             if (clk_count >= CLK_UPDATE_COUNT_PERIOD) begin

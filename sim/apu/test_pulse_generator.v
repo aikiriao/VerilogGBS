@@ -62,8 +62,6 @@ module test_pulse_generator;
 
     // リセットタスク
     task automatic pg_reset;
-        integer i;
-
         begin
             rst_n = 0;
             #STEP
@@ -82,6 +80,8 @@ module test_pulse_generator;
             `ASSERT_EQ(pg.period_update_count, 1);
             `ASSERT_EQ(pg.duty_ratio, 0);
             `ASSERT_EQ(pg.pulse_table_index, 0);
+            `ASSERT_EQ(enable, 0);
+            `ASSERT_EQ(dac_enable, 0);
         end
     endtask
 
@@ -125,7 +125,7 @@ module test_pulse_generator;
             #STEP
             we_length_timer_duty_ratio = 0;
 
-            `ASSERT_EQ(pg.timer.initial_timer_count, i_initial_timer);
+            `ASSERT_EQ(pg.timer.initial_timer_count, {2'd0, i_initial_timer});
             `ASSERT_EQ(pg.duty_ratio, i_duty_ratio);
         end
     endtask
@@ -199,7 +199,7 @@ module test_pulse_generator;
 
             for (d = 0; d < 4; d = d + 1) begin
                 // デューティ比設定
-                pg_set_length_timer_duty_ratio(0, d); 
+                pg_set_length_timer_duty_ratio(0, d[1:0]); 
                 // ピッチは7FF（1クロック更新）に設定
                 pg_set_period_low(8'hFF);
                 // トリガー
@@ -208,7 +208,8 @@ module test_pulse_generator;
                 for (i = 0; i < 16; i = i + 1) begin
                     #STEP
                     // トリガー直後でインデックスが1進んでいるため+1して比較
-                    `EXPECT_EQ(pg.o_signal, pg.pulse_table(d, (i + 1) & 3'h7) ? 4'hF : 0);
+                    `EXPECT_EQ(pg.o_signal, pg.pulse_table(d[1:0], i[2:0] + 1) ? 4'hF : 0);
+                    `EXPECT_EQ(signal, pg.pulse_table(d[1:0], i[2:0] + 1) ? 4'hF : 0);
                 end
             end
         end
@@ -216,7 +217,8 @@ module test_pulse_generator;
 
     // 長さタイマーのテスト
     task automatic pg_timer_test;
-        integer last_clk_count, last_signal;
+        reg [15:0] last_clk_count;
+        reg [3:0] last_signal;
 
         begin
             pg_reset();
@@ -247,6 +249,7 @@ module test_pulse_generator;
             `EXPECT_EQ(pg.o_enable, 0);
             `EXPECT_EQ(pg.clk_count, last_clk_count);
             `EXPECT_EQ(pg.o_signal, last_signal);
+            `EXPECT_EQ(signal, last_signal);
         end
     endtask
 

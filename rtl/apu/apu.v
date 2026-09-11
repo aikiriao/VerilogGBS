@@ -7,18 +7,18 @@ module apu #(
     input wire i_clk, // クロック
     input wire i_rst_n, // 非同期リセット
     input wire i_we_register, // レジスタ書き込みイネーブル
-    input wire i_re_register, // レジスタ読み込みイネーブル
     input wire [15:0] i_address, // アドレス
     input wire [7:0] i_w_data, // 書き込みデータ
     output wire [7:0] o_r_data, // 読み込みデータ
-    output reg signed [SIGNAL_BIT_WIDTH - 1:0] o_l_signal, // 左チャンネル信号
-    output reg signed [SIGNAL_BIT_WIDTH - 1:0] o_r_signal // 右チャンネル信号
+    output reg signed [SIGNAL_BIT_WIDTH-1:0] o_l_signal, // 左チャンネル信号
+    output reg signed [SIGNAL_BIT_WIDTH-1:0] o_r_signal // 右チャンネル信号
 );
 
     // レジスタアドレス定義
     `include "sm83_register_address.vh"
 
-    localparam HPF_COEFFIENT = 0.999958 * (1 << (SIGNAL_BIT_WIDTH - 1)); // HPF係数
+    localparam HPF_COEFFIENT_FIXED = $rtoi(0.999958 * (1 << (SIGNAL_BIT_WIDTH - 1)));
+    localparam [SIGNAL_BIT_WIDTH-1:0] HPF_COEFFIENT = HPF_COEFFIENT_FIXED[SIGNAL_BIT_WIDTH-1:0]; // HPF係数
 
     // 各レジスタの書き込み信号
     wire nr10_write = i_we_register & (i_address == HWREG_NR10_CHANNEL1_SWEEP);
@@ -27,9 +27,9 @@ module apu #(
     wire nr13_write = i_we_register & (i_address == HWREG_NR13_CHANNEL1_PERIOD_LOW);
     wire nr14_write = i_we_register & (i_address == HWREG_NR14_CHANNEL1_PERIOD_HIGH_CONTROL);
     wire nr21_write = i_we_register & (i_address == HWREG_NR21_CHANNEL2_LENGTH_TIMER_DURY_CYCLE);
-    wire nr22_write = i_we_register & (i_address == HWREG_NR22_CHANNEL1_VOLUME_ENVELOPE);
-    wire nr23_write = i_we_register & (i_address == HWREG_NR23_CHANNEL1_PERIOD_LOW);
-    wire nr24_write = i_we_register & (i_address == HWREG_NR24_CHANNEL1_PERIOD_HIGH_CONTROL);
+    wire nr22_write = i_we_register & (i_address == HWREG_NR22_CHANNEL2_VOLUME_ENVELOPE);
+    wire nr23_write = i_we_register & (i_address == HWREG_NR23_CHANNEL2_PERIOD_LOW);
+    wire nr24_write = i_we_register & (i_address == HWREG_NR24_CHANNEL2_PERIOD_HIGH_CONTROL);
     wire nr30_write = i_we_register & (i_address == HWREG_NR30_CHANNEL3_DAC_ENABLE);
     wire nr31_write = i_we_register & (i_address == HWREG_NR31_CHANNEL3_LENGTH_TIMER);
     wire nr32_write = i_we_register & (i_address == HWREG_NR32_CHANNEL3_OUTPUT_LEVEL);
@@ -59,12 +59,12 @@ module apu #(
     wire signed [SIGNAL_BIT_WIDTH-1:0] out_l;
     wire signed [SIGNAL_BIT_WIDTH-1:0] out_r;
 
-    reg [HPF_COEFFIENT_BIT_WIDTH-1:0] hpf_buffer_l;
-    reg [HPF_COEFFIENT_BIT_WIDTH-1:0] hpf_buffer_r;
+    reg [SIGNAL_BIT_WIDTH-1:0] hpf_buffer_l;
+    reg [SIGNAL_BIT_WIDTH-1:0] hpf_buffer_r;
 
     // APUレジスタ
     reg [7:0] nr10_ch1_sweep;
-    reg [7:0] nr11_ch1_timer_duty_datio;
+    reg [7:0] nr11_ch1_timer_duty_ratio;
     reg [7:0] nr12_ch1_volume_envelope;
     reg [7:0] nr13_ch1_period_low;
     reg [7:0] nr14_ch1_period_high_control;
@@ -119,9 +119,9 @@ module apu #(
         .i_rst_n(i_rst_n),
         // スイープに関するポートは0にして無効化
         .i_we_period_sweep(0),
-        .i_period_sweep_pace(8'h0),
-        .i_period_sweep_direction(8'h0),
-        .i_period_sweep_step(8'h0),
+        .i_period_sweep_pace(3'h0),
+        .i_period_sweep_direction(1'h0),
+        .i_period_sweep_step(3'h0),
         .i_we_length_timer_duty_ratio(nr21_write),
         .i_duty_ratio(i_w_data[7:6]),
         .i_initial_timer(i_w_data[5:0]),
@@ -148,13 +148,13 @@ module apu #(
         .i_we_dac_enable(nr30_write),
         .i_dac_enable(i_w_data[7]),
         .i_we_length_timer(nr31_write),
-        .i_initial_timer(i_w_data),
+        .i_initial_timer(i_w_data[5:0]),
         .i_we_output_level(nr32_write),
         .i_output_level(i_w_data[6:5]),
         .i_we_period_low(nr33_write),
         .i_period_low(i_w_data),
         .i_we_wave_ram(waveram_write),
-        .i_wave_even_index((i_address - HWREG_CHANNEL3_WAVE_PATTERN_RAM_START) << 1),
+        .i_wave_even_index({i_address[3:0], 1'd0}),
         .i_wave_2pcm(i_w_data),
         .i_we_period_high_control(nr34_write),
         .i_period_high(i_w_data[2:0]),
@@ -194,7 +194,7 @@ module apu #(
     begin
         if (!i_rst_n) begin
             nr10_ch1_sweep <= 0;
-            nr11_ch1_timer_duty_datio <= 0;
+            nr11_ch1_timer_duty_ratio <= 0;
             nr12_ch1_volume_envelope <= 0;
             nr13_ch1_period_low <= 0;
             nr14_ch1_period_high_control <= 0;
@@ -346,11 +346,11 @@ module apu #(
 
     // マスターボリューム適用
     assign l_signal = apply_master_volume(nr52_audio_master_control[6:4], mixed_l_signal);
-    assign r_signal = apply_master_volume(nr52_audio_master_control[3:0], mixed_r_signal);
+    assign r_signal = apply_master_volume(nr52_audio_master_control[2:0], mixed_r_signal);
 
     // ビット幅拡張・HPF適用
-    assign ex_l_signal = l_signal <<< (SIGNAL_BIT_WIDTH - 8);
-    assign ex_r_signal = r_signal <<< (SIGNAL_BIT_WIDTH - 8);
+    assign ex_l_signal = {{8{l_signal[7]}}, l_signal} <<< (SIGNAL_BIT_WIDTH - 8);
+    assign ex_r_signal = {{8{r_signal[7]}}, r_signal} <<< (SIGNAL_BIT_WIDTH - 8);
     assign out_l = ex_l_signal - hpf_buffer_l;
     assign out_r = ex_r_signal - hpf_buffer_r;
     always @(posedge i_clk or negedge i_rst_n)

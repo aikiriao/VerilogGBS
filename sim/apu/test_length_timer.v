@@ -126,13 +126,13 @@ module test_length_timer;
 
         // 初期タイマー値を0に固定し、期待した時間でexpiredが立つかチェック
         for (t = 0; t <= 20; t = t + 1) begin
-            timer_test_case(8'd0, t, t + 1);
+            timer_test_case(8'd0, t[15:0], t + 1);
         end
 
         // 初期タイマー値を変えてチェック
         for (t = 0; t <= 20; t = t + 1) begin
             for (i = 0; i <= t; i = i + 1) begin
-                timer_test_case(i, t, t - i + 1);
+                timer_test_case(i[7:0], t[15:0], t - i + 1);
             end
         end
 

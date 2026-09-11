@@ -26,6 +26,7 @@ module test_sample_generator;
     wire [3:0] signal;
     wire enable;
     wire dac_enable;
+    wire [7:0] r_wave_2pcm;
 
     sample_generator #(
         .CLOCK_HZ(2097152)
@@ -47,6 +48,7 @@ module test_sample_generator;
         .i_period_high(period_high),
         .i_length_timer_enable(length_timer_enable),
         .i_trigger(trigger),
+        .o_wave_2pcm(r_wave_2pcm),
         .o_enable(enable),
         .o_dac_enable(dac_enable),
         .o_signal(signal)
@@ -76,6 +78,12 @@ module test_sample_generator;
                 `ASSERT_EQ(sg.wave_ram[i], 0);
             end
             `ASSERT_EQ(sg.wave_ram_index, 0);
+
+            `ASSERT_EQ(enable, 0);
+            `ASSERT_EQ(dac_enable, 0);
+
+            wave_even_index = 0;
+            `ASSERT_EQ(r_wave_2pcm, 0);
         end
     endtask
 
@@ -90,7 +98,7 @@ module test_sample_generator;
             #STEP
             we_length_timer = 0;
 
-            `ASSERT_EQ(sg.timer.initial_timer_count, i_initial_timer);
+            `ASSERT_EQ(sg.timer.initial_timer_count, {2'd0, i_initial_timer});
         end
     endtask
 
@@ -190,7 +198,7 @@ module test_sample_generator;
             sg_set_output_level(1); // 最大音量（シフトなし）
             // 波形RAM全てに1をセット（シフトがあれば0になるので）
             for (i = 0; i < 16; i = i + 1) begin
-                sg_set_wave_ram(2 * i, {4'h1, 4'h1});
+                sg_set_wave_ram(2 * i[4:0], {4'h1, 4'h1});
             end
             // ピッチは7FF（1クロック更新）に設定
             sg_set_period_low(8'hFF);
@@ -201,6 +209,7 @@ module test_sample_generator;
             for (i = 0; i < 64; i = i + 1) begin
                 #STEP
                 `EXPECT_EQ(sg.o_signal, 1);
+                `EXPECT_EQ(signal, 1);
             end
         end
     endtask
@@ -212,7 +221,7 @@ module test_sample_generator;
         begin
             for (s = 0; s < 4; s = s + 1) begin
                 // シフト量
-                case (s)
+                case (s[1:0])
                     2'd0: shift = 4;
                     2'd1: shift = 0;
                     2'd2: shift = 1;
@@ -222,10 +231,10 @@ module test_sample_generator;
                 sg_reset();
                 sg_set_length_timer(0);
                 sg_set_dac_enable(1);
-                sg_set_output_level(s);
+                sg_set_output_level(s[1:0]);
                 // 波形RAM全てにFをセット
                 for (i = 0; i < 16; i = i + 1) begin
-                    sg_set_wave_ram(2 * i, {4'hF, 4'hF});
+                    sg_set_wave_ram(2 * i[4:0], {4'hF, 4'hF});
                 end
                 // ピッチは7FF（1クロック更新）に設定
                 sg_set_period_low(8'hFF);
@@ -235,6 +244,7 @@ module test_sample_generator;
                 for (i = 0; i < 64; i = i + 1) begin
                     #STEP
                     `EXPECT_EQ(sg.o_signal, 4'hF >> shift);
+                    `EXPECT_EQ(signal, 4'hF >> shift);
                 end
             end
         end
@@ -252,9 +262,9 @@ module test_sample_generator;
             sg_set_output_level(1); // 最大音量（シフトなし）
             // 波形RAMにリニアフェードをセット
             for (i = 0; i < 16; i = i + 1) begin
-                pcm2[7:4] = i;
-                pcm2[3:0] = i;
-                sg_set_wave_ram(2 * i, pcm2);
+                pcm2[7:4] = i[3:0];
+                pcm2[3:0] = i[3:0];
+                sg_set_wave_ram(2 * i[4:0], pcm2);
             end
             // ピッチは7FF（1クロック更新）に設定
             sg_set_period_low(8'hFF);
@@ -264,7 +274,8 @@ module test_sample_generator;
             // 意図した出力になっているか？念のため2周
             for (i = 0; i < 64; i = i + 1) begin
                 #STEP
-                `EXPECT_EQ(sg.o_signal, ((i >> 1) + 1) & 4'hF);
+                `EXPECT_EQ(sg.o_signal, (i[4:1] + 1) & 4'hF);
+                `EXPECT_EQ(signal, (i[4:1] + 1) & 4'hF);
             end
         end
     endtask
@@ -272,7 +283,6 @@ module test_sample_generator;
     // 周期変更テスト
     task automatic sg_change_period_test;
         integer i, j, per;
-        reg [7:0] pcm2;
 
         begin
             sg_reset();
@@ -281,12 +291,12 @@ module test_sample_generator;
             sg_set_output_level(1); // 最大音量（シフトなし）
             // 0,1を繰り返す波形をセット
             for (i = 0; i < 16; i = i + 1) begin
-                sg_set_wave_ram(2 * i, {4'd0, 4'd1});
+                sg_set_wave_ram(2 * i[4:0], {4'd0, 4'd1});
             end
 
             for (per = 2; per <= 10; per = per + 1) begin
                 // perクロックでサンプル更新されるように設定
-                sg_set_period_low(8'hFF - per + 1);
+                sg_set_period_low(8'hFF - per[7:0] + 1);
                 // トリガー
                 sg_set_period_high_control(3'h7, 0, 1);
 
@@ -298,8 +308,10 @@ module test_sample_generator;
                         #STEP
                         if ((i % 2) == 0) begin
                             `EXPECT_EQ(sg.o_signal, 0);
+                            `EXPECT_EQ(signal, 0);
                         end else begin
                             `EXPECT_EQ(sg.o_signal, 1);
+                            `EXPECT_EQ(signal, 1);
                         end
                     end
                 end

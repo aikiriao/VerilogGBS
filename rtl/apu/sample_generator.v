@@ -20,14 +20,11 @@ module sample_generator #(
     input wire [2:0] i_period_high, // 周期上位ビット
     input wire i_length_timer_enable, // 長さタイマー有効
     input wire i_trigger, // トリガー信号
-    output wire o_wave_2pcm, // 読み取ったサンプル値
+    output wire [7:0] o_wave_2pcm, // 読み取ったサンプル値
     output reg o_enable, // 有効か？
     output reg o_dac_enable, // DAC有効か？
     output wire [3:0] o_signal // 出力信号
 );
-
-    localparam SAMPLE_GENERATOR_CLOCK_HZ = 2097152; // サンプルジェネレータのクロック動作周波数
-    localparam CLK_UPDATE_COUNT_PERIOD = CLOCK_HZ / SAMPLE_GENERATOR_CLOCK_HZ; // クロックの更新周期
 
     wire trigger; // トリガー信号
     wire timer_expired; // 時間切れか？
@@ -126,7 +123,7 @@ module sample_generator #(
             wave_ram_index <= 1;
             clk_count <= 1;
             // トリガーと同時にピッチ周期上位ビットを設定する場合があるためピッチをこの場で計算
-            clk_sample_update_period <= 12'd2048 - {i_period_high, period[7:0]};
+            clk_sample_update_period <= 16'd2048 - {5'd0, i_period_high, period[7:0]};
         end else if (timer_expired | !o_dac_enable) begin
             // タイマー時間切れ・DAC無効
             o_enable <= 0;
@@ -135,7 +132,7 @@ module sample_generator #(
             if (clk_count >= clk_sample_update_period) begin
                 wave_ram_index <= wave_ram_index + 1;
                 // 周期変更はサンプル更新後
-                clk_sample_update_period <= 12'd2048 - period;
+                clk_sample_update_period <= 16'd2048 - {5'd0, period};
                 clk_count <= 1;
             end else begin
                 clk_count <= clk_count + 1;
@@ -144,7 +141,7 @@ module sample_generator #(
     end
 
     // 波形読み取り値
-    assign o_wave_2pcm = wave_ram[i_wave_even_index];
+    assign o_wave_2pcm = {wave_ram[i_wave_even_index], wave_ram[i_wave_even_index + 1]};
 
     // 出力信号
     assign o_signal = wave_ram[wave_ram_index] >> level_shift;

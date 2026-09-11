@@ -6,7 +6,6 @@ module test_envelope_generator;
 
     reg clk;
     reg rst_n;
-    reg enable;
     reg we;
     reg trigger;
     reg volume_delta_direction;
@@ -67,8 +66,10 @@ module test_envelope_generator;
 
             // 期待した時間待機
             #(wait_duration * STEP)
+
             // 期待したボリュームになっているかチェック
             `EXPECT_EQ(eg.o_volume, expected_volume);
+            `EXPECT_EQ(volume, expected_volume);
         end
     endtask
 
@@ -84,8 +85,8 @@ module test_envelope_generator;
 
         // 即時設定ケース
         for (i = 0; i <= 4'hF; i = i + 1) begin
-            eg_test_case(i, 1, 0, 1, i);
-            eg_test_case(i, 0, 0, 1, i);
+            eg_test_case(i[3:0], 1, 0, 1, i[3:0]);
+            eg_test_case(i[3:0], 0, 0, 1, i[3:0]);
         end
 
         // 単純な下降・上昇ケース

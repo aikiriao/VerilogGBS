@@ -31,6 +31,14 @@ module pulse_generator #(
     localparam CLK_UPDATE_COUNT_PERIOD = CLOCK_HZ / PULSE_GENERATOR_CLOCK_HZ; // クロックの更新周期
     localparam SWEEP_UPDATE_PERIOD_UNIT_HZ = 128; // スイープの更新頻度単位
 
+    localparam UPDATE_PERIOD1 = CLOCK_HZ / (1 * SWEEP_UPDATE_PERIOD_UNIT_HZ);
+    localparam UPDATE_PERIOD2 = CLOCK_HZ / (2 * SWEEP_UPDATE_PERIOD_UNIT_HZ);
+    localparam UPDATE_PERIOD3 = CLOCK_HZ / (3 * SWEEP_UPDATE_PERIOD_UNIT_HZ);
+    localparam UPDATE_PERIOD4 = CLOCK_HZ / (4 * SWEEP_UPDATE_PERIOD_UNIT_HZ);
+    localparam UPDATE_PERIOD5 = CLOCK_HZ / (5 * SWEEP_UPDATE_PERIOD_UNIT_HZ);
+    localparam UPDATE_PERIOD6 = CLOCK_HZ / (6 * SWEEP_UPDATE_PERIOD_UNIT_HZ);
+    localparam UPDATE_PERIOD7 = CLOCK_HZ / (7 * SWEEP_UPDATE_PERIOD_UNIT_HZ);
+
     wire trigger; // トリガー信号
     wire [3:0] eg_volume; // 出力ボリューム
     wire timer_expired; // 時間切れか？
@@ -41,9 +49,10 @@ module pulse_generator #(
     reg [10:0] period; // 周期
     reg period_update_enable; // 周期変更するか
     reg period_sweep_direction; // 周期変更方向（0: 正, 1: 負）
-    reg [7:0] period_sweep_step; // 周期変更ステップ
+    reg [2:0] period_sweep_step; // 周期変更ステップ
     reg [15:0] period_update_period; // 周期更新間隔
     reg [15:0] period_update_count; // 周期更新カウント
+    reg period_overflow; // ピッチ周期がオーバーフローしたか？
     reg [1:0] duty_ratio; // デューティ比
     reg [2:0] pulse_table_index; // 矩形波テーブルのインデックス
 
@@ -102,17 +111,19 @@ module pulse_generator #(
             period_sweep_step <= i_period_sweep_step;
             if (i_period_sweep_pace > 0) begin
                 case (i_period_sweep_pace)
-                    3'd1: period_update_period <= PULSE_GENERATOR_CLOCK_HZ / (1 * SWEEP_UPDATE_PERIOD_UNIT_HZ);
-                    3'd2: period_update_period <= PULSE_GENERATOR_CLOCK_HZ / (2 * SWEEP_UPDATE_PERIOD_UNIT_HZ);
-                    3'd3: period_update_period <= PULSE_GENERATOR_CLOCK_HZ / (3 * SWEEP_UPDATE_PERIOD_UNIT_HZ);
-                    3'd4: period_update_period <= PULSE_GENERATOR_CLOCK_HZ / (4 * SWEEP_UPDATE_PERIOD_UNIT_HZ);
-                    3'd5: period_update_period <= PULSE_GENERATOR_CLOCK_HZ / (5 * SWEEP_UPDATE_PERIOD_UNIT_HZ);
-                    3'd6: period_update_period <= PULSE_GENERATOR_CLOCK_HZ / (6 * SWEEP_UPDATE_PERIOD_UNIT_HZ);
-                    3'd7: period_update_period <= PULSE_GENERATOR_CLOCK_HZ / (7 * SWEEP_UPDATE_PERIOD_UNIT_HZ);
+                    3'd1: period_update_period <= UPDATE_PERIOD1[15:0];
+                    3'd2: period_update_period <= UPDATE_PERIOD2[15:0];
+                    3'd3: period_update_period <= UPDATE_PERIOD3[15:0];
+                    3'd4: period_update_period <= UPDATE_PERIOD4[15:0];
+                    3'd5: period_update_period <= UPDATE_PERIOD5[15:0];
+                    3'd6: period_update_period <= UPDATE_PERIOD6[15:0];
+                    3'd7: period_update_period <= UPDATE_PERIOD7[15:0];
                     default: period_update_period <= 0;
                 endcase
             end
             period_update_enable <= (i_period_sweep_pace > 0);
+        end else if (period_overflow) begin
+            period_update_enable <= 0;
         end
     end
 
@@ -126,35 +137,25 @@ module pulse_generator #(
         end
     end
 
-    // 更新周期（ピッチ周期）設定
-    always @(posedge i_clk or negedge i_rst_n)
-    begin
-        if (!i_rst_n) begin
-            period <= 0;
-        end else if (i_we_period_low) begin
-            period <= {period[10:8], i_period_low};
-        end else if (i_we_period_high_control) begin
-            period <= {i_period_high, period[7:0]};
-        end
-    end
-
-    // 周期更新
+    // 更新周期（ピッチ周期）設定・更新
     wire [11:0] extend_period;
     assign extend_period = (period_sweep_direction)
-                    ? (period - (period >> period_sweep_step))
-                    : (period + (period >> period_sweep_step));
+                    ? ({1'd0, period} - {1'd0, (period >> period_sweep_step)})
+                    : ({1'd0, period} + {1'd0, (period >> period_sweep_step)});
     always @(posedge i_clk or negedge i_rst_n)
     begin
         if (!i_rst_n) begin
             period_update_count <= 1;
+            period <= 0;
+            period_overflow <= 0;
+        end else if (i_we_period_low) begin
+            period <= {period[10:8], i_period_low};
+        end else if (i_we_period_high_control) begin
+            period <= {i_period_high, period[7:0]};
         end else if (o_enable & period_update_enable) begin
-            if (period_update_count >= clk_sample_update_period) begin
+            if (period_update_count >= period_update_period) begin
                 period <= extend_period[10:0];
-                // オーバーフロー時はチャンネルを無効に
-                if (extend_period[11]) begin
-                    o_enable <= 0;
-                    period_update_enable <= 0;
-                end
+                period_overflow <= extend_period[11];
                 period_update_count <= 1;
             end else begin
                 period_update_count <= period_update_count + 1;
@@ -176,16 +177,16 @@ module pulse_generator #(
             pulse_table_index <= 0;
             clk_count <= 1;
             // トリガーと同時にピッチ周期上位ビットを設定する場合があるためピッチをこの場で計算
-            clk_sample_update_period <= 12'd2048 - {i_period_high, period[7:0]};
-        end else if (timer_expired | !o_dac_enable) begin
-            // タイマー時間切れ・DAC無効
+            clk_sample_update_period <= 16'd2048 - {5'd0, i_period_high, period[7:0]};
+        end else if (timer_expired | !o_dac_enable | period_overflow) begin
+            // タイマー時間切れ・DAC無効・ピッチ周期オーバーフロー
             o_enable <= 0;
         end else if (o_enable) begin
             // カウントアップ
             if (clk_count >= clk_sample_update_period) begin
                 pulse_table_index <= pulse_table_index + 1;
                 // 周期変更はサンプル更新後
-                clk_sample_update_period <= 12'd2048 - period;
+                clk_sample_update_period <= 16'd2048 - {5'd0, period};
                 clk_count <= 1;
             end else begin
                 clk_count <= clk_count + 1;
@@ -194,14 +195,14 @@ module pulse_generator #(
     end
 
     // 矩形波テーブルの値を得る
-    function pulse_table(
-        input [1:0] duty_ratio,
-        input [2:0] pulse_table_index
+    function automatic pulse_table(
+        input [1:0] duty,
+        input [2:0] index
     );
     begin
-        case (duty_ratio)
+        case (duty)
             2'd0: // 12.5%
-                case (pulse_table_index)
+                case (index)
                     3'd0: pulse_table = 1;
                     3'd1: pulse_table = 1;
                     3'd2: pulse_table = 1;
@@ -213,7 +214,7 @@ module pulse_generator #(
                     default: pulse_table = 0;
                 endcase
             2'd1: // 25.0%
-                case (pulse_table_index)
+                case (index)
                     3'd0: pulse_table = 0;
                     3'd1: pulse_table = 1;
                     3'd2: pulse_table = 1;
@@ -225,7 +226,7 @@ module pulse_generator #(
                     default: pulse_table = 0;
                 endcase
             2'd2: // 50.0%
-                case (pulse_table_index)
+                case (index)
                     3'd0: pulse_table = 0;
                     3'd1: pulse_table = 1;
                     3'd2: pulse_table = 1;
@@ -237,7 +238,7 @@ module pulse_generator #(
                     default: pulse_table = 0;
                 endcase
             2'd3: // 75.0%
-                case (pulse_table_index)
+                case (index)
                     3'd0: pulse_table = 1;
                     3'd1: pulse_table = 0;
                     3'd2: pulse_table = 0;
