@@ -1,3 +1,5 @@
+`timescale 1ns/1ns
+
 module noise_generator #(
     parameter CLOCK_HZ = 2097152 // クロック動作周波数
 )(
@@ -24,6 +26,7 @@ module noise_generator #(
     localparam NOISE_GENERATOR_CLOCK_HZ = 262144; // ノイズジェネレータのクロック動作周波数
     localparam CLK_UPDATE_COUNT_PERIOD = CLOCK_HZ / NOISE_GENERATOR_CLOCK_HZ; // クロックの更新周期
 
+    wire trigger; // トリガー信号
     wire [3:0] eg_volume; // 出力ボリューム
     wire timer_expired; // 時間切れか？
     wire length_timer_trigger; // 長さタイマーのトリガー信号

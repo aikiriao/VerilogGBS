@@ -1,3 +1,5 @@
+`timescale 1ns/1ns
+
 module apu #(
     parameter CLOCK_HZ = 2097152, // クロック動作周波数
     parameter SIGNAL_BIT_WIDTH = 16 // 出力信号のビット深度
@@ -120,16 +122,16 @@ module apu #(
         .i_period_sweep_pace(8'h0),
         .i_period_sweep_direction(8'h0),
         .i_period_sweep_step(8'h0),
-        .i_we_length_timer_duty_ratio(nr22_write),
+        .i_we_length_timer_duty_ratio(nr21_write),
         .i_duty_ratio(i_w_data[7:6]),
         .i_initial_timer(i_w_data[5:0]),
-        .i_we_volume_envelope(nr23_write),
+        .i_we_volume_envelope(nr22_write),
         .i_initial_volume(i_w_data[7:4]),
         .i_volume_delta_direction(i_w_data[3]),
         .i_volume_sweep_pace(i_w_data[2:0]),
-        .i_we_period_low(nr24_write),
+        .i_we_period_low(nr23_write),
         .i_period_low(i_w_data),
-        .i_we_period_high_control(nr25_write),
+        .i_we_period_high_control(nr24_write),
         .i_period_high(i_w_data[2:0]),
         .i_length_timer_enable(i_w_data[6]),
         .i_trigger(i_w_data[7]),

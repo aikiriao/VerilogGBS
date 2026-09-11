@@ -1,3 +1,5 @@
+`timescale 1ns/1ns
+
 module envelope_generator #(
     parameter CLOCK_HZ = 1048576 // クロック動作周波数
 )(

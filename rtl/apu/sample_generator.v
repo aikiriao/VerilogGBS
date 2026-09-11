@@ -1,3 +1,5 @@
+`timescale 1ns/1ns
+
 module sample_generator #(
     parameter CLOCK_HZ = 2097152 // クロック動作周波数
 )(
@@ -27,6 +29,7 @@ module sample_generator #(
     localparam SAMPLE_GENERATOR_CLOCK_HZ = 2097152; // サンプルジェネレータのクロック動作周波数
     localparam CLK_UPDATE_COUNT_PERIOD = CLOCK_HZ / SAMPLE_GENERATOR_CLOCK_HZ; // クロックの更新周期
 
+    wire trigger; // トリガー信号
     wire timer_expired; // 時間切れか？
     wire length_timer_trigger; // 長さタイマーのトリガー信号
 

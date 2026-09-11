@@ -27,7 +27,7 @@ $(BUILD_DIR):
 # 個別テスト
 test_%: $(BUILD_DIR)
 	$(IVERILOG) \
-		-g2001 \
+		-g2001 -Wall \
 		-s test_$* \
 		-I rtl/include \
 		-I sim/include \

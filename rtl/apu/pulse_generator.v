@@ -1,3 +1,5 @@
+`timescale 1ns/1ns
+
 module pulse_generator #(
     parameter CLOCK_HZ = 2097152 // クロック動作周波数
 )(
@@ -29,6 +31,7 @@ module pulse_generator #(
     localparam CLK_UPDATE_COUNT_PERIOD = CLOCK_HZ / PULSE_GENERATOR_CLOCK_HZ; // クロックの更新周期
     localparam SWEEP_UPDATE_PERIOD_UNIT_HZ = 128; // スイープの更新頻度単位
 
+    wire trigger; // トリガー信号
     wire [3:0] eg_volume; // 出力ボリューム
     wire timer_expired; // 時間切れか？
     wire length_timer_trigger; // 長さタイマーのトリガー信号
