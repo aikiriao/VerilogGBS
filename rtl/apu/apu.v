@@ -314,7 +314,7 @@ module apu #(
     assign dac_signal[2] = dac(ch_dac_enable[2], ch_enable[2] ? ch_signal[2] : 4'd0);
     assign dac_signal[3] = dac(ch_dac_enable[3], ch_enable[3] ? ch_signal[3] : 4'd0);
 
-    // ミックス・パンニング・マスターボリューム適用
+    // ミックス・パンニング
     assign mixed_l_signal =
         (nr51_sound_panning[0] ? dac_signal[0] : 8'd0)
         + (nr51_sound_panning[1] ? dac_signal[1] : 8'd0)
@@ -326,7 +326,7 @@ module apu #(
         + (nr51_sound_panning[6] ? dac_signal[2] : 8'd0)
         + (nr51_sound_panning[7] ? dac_signal[3] : 8'd0);
 
-    // マスターボリューム適用
+    // マスターボリューム
     function automatic signed [7:0] apply_master_volume;
         input [2:0] volume;
         input [7:0] in;
@@ -348,9 +348,11 @@ module apu #(
     assign l_signal = apply_master_volume(nr52_audio_master_control[6:4], mixed_l_signal);
     assign r_signal = apply_master_volume(nr52_audio_master_control[2:0], mixed_r_signal);
 
-    // ビット幅拡張・HPF適用
+    // ビット幅拡張
     assign ex_l_signal = {{8{l_signal[7]}}, l_signal} <<< (SIGNAL_BIT_WIDTH - 8);
     assign ex_r_signal = {{8{r_signal[7]}}, r_signal} <<< (SIGNAL_BIT_WIDTH - 8);
+
+    // HPF適用
     assign out_l = ex_l_signal - hpf_buffer_l;
     assign out_r = ex_r_signal - hpf_buffer_r;
     always @(posedge i_clk or negedge i_rst_n)
