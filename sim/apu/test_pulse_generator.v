@@ -239,12 +239,13 @@ module test_pulse_generator;
             // タイマーが時間切れした瞬間はまだ有効
             `EXPECT_EQ(pg.o_enable, 1);
 
-            #(STEP/2)
+            @(negedge clk)
             last_clk_count = pg.clk_count;
             last_signal = pg.o_signal;
             
-            // 1クロック以降の状態を観測
-            #(2 * STEP)
+            // 2クロック以降の状態を観測
+            repeat (2) @(posedge clk)
+            @(negedge clk)
             
             // 無効になっており、最後の状態が保持されている
             `EXPECT_EQ(pg.o_enable, 0);
