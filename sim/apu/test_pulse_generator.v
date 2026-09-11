@@ -206,7 +206,8 @@ module test_pulse_generator;
                 pg_set_period_high_control(3'h7, 0, 1);
                 // 念のため2周分
                 for (i = 0; i < 16; i = i + 1) begin
-                    #STEP
+                    // 次のクロックの値を確定
+                    @(posedge clk); @(negedge clk);
                     // トリガー直後でインデックスが1進んでいるため+1して比較
                     `EXPECT_EQ(pg.o_signal, pg.pulse_table(d[1:0], i[2:0] + 1) ? 4'hF : 0);
                     `EXPECT_EQ(signal, pg.pulse_table(d[1:0], i[2:0] + 1) ? 4'hF : 0);

@@ -96,7 +96,8 @@ module test_length_timer;
             trigger = 0;
 
             // 期待した時間待機
-            #(expected_clk_timeout * STEP)
+            repeat (expected_clk_timeout) @(posedge clk);
+            @(negedge clk);
             // 時間切れになっていることをチェック
             `EXPECT_EQ(timer.o_expired, 1);
             `EXPECT_EQ(expired, 1);
@@ -105,7 +106,8 @@ module test_length_timer;
             `EXPECT_EQ(timer2_expired, 0);
 
             // 今一度同じ時間待機
-            #(expected_clk_timeout * STEP)
+            repeat (expected_clk_timeout) @(posedge clk);
+            @(negedge clk);
             // 時間切れになっていることをチェック
             `EXPECT_EQ(timer.o_expired, 1);
             `EXPECT_EQ(expired, 1);

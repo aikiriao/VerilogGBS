@@ -64,8 +64,10 @@ module test_envelope_generator;
             #STEP
             trigger = 0;
 
-            // 期待した時間待機
-            #(wait_duration * STEP)
+            // 期待したクロックだけ待機
+            repeat (wait_duration) @(posedge clk);
+            // 信号値が確定するのを待つ
+            @(negedge clk);
 
             // 期待したボリュームになっているかチェック
             `EXPECT_EQ(eg.o_volume, expected_volume);

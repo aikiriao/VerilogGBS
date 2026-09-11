@@ -207,7 +207,8 @@ module test_sample_generator;
             
             // 意図した出力になっているか？念のため2周
             for (i = 0; i < 64; i = i + 1) begin
-                #STEP
+                // 次のクロックの値確定まで待機
+                @(posedge clk); @(negedge clk);
                 `EXPECT_EQ(sg.o_signal, 1);
                 `EXPECT_EQ(signal, 1);
             end
@@ -242,7 +243,8 @@ module test_sample_generator;
                 sg_set_period_high_control(3'h7, 0, 1);
                 // 意図したシフトがされているか？念のため2周
                 for (i = 0; i < 64; i = i + 1) begin
-                    #STEP
+                    // 次のクロックの値確定まで待機
+                    @(posedge clk); @(negedge clk);
                     `EXPECT_EQ(sg.o_signal, 4'hF >> shift);
                     `EXPECT_EQ(signal, 4'hF >> shift);
                 end
@@ -273,7 +275,8 @@ module test_sample_generator;
 
             // 意図した出力になっているか？念のため2周
             for (i = 0; i < 64; i = i + 1) begin
-                #STEP
+                // 次のクロックの値確定まで待機
+                @(posedge clk); @(negedge clk);
                 `EXPECT_EQ(sg.o_signal, (i[4:1] + 1) & 4'hF);
                 `EXPECT_EQ(signal, (i[4:1] + 1) & 4'hF);
             end
@@ -302,10 +305,10 @@ module test_sample_generator;
 
                 // タイミング合わせ
                 // トリガー直後に信号が出ており、かつカウントが1進んでいるので一周期分消化
-                #((per - 1) * STEP)
+                repeat (per - 1) @(posedge clk);
                 for (i = 0; i < 32; i = i + 1) begin
                     for (j = 0; j < per; j = j + 1) begin
-                        #STEP
+                        @(posedge clk); @(negedge clk);
                         if ((i % 2) == 0) begin
                             `EXPECT_EQ(sg.o_signal, 0);
                             `EXPECT_EQ(signal, 0);
