@@ -114,10 +114,18 @@ module test_apu;
 
         apu_reset();
 
-        // CH1をトリガーしてみる
+        // CH1,2,3をトリガーしてみる
         apu_write_register(`HWREG_NR12_CHANNEL1_VOLUME_ENVELOPE, 8'hF0);
         apu_write_register(`HWREG_NR13_CHANNEL1_PERIOD_LOW, 8'hFF);
         apu_write_register(`HWREG_NR14_CHANNEL1_PERIOD_HIGH_CONTROL, 8'h87);
+        apu_write_register(`HWREG_NR22_CHANNEL2_VOLUME_ENVELOPE, 8'hF0);
+        apu_write_register(`HWREG_NR23_CHANNEL2_PERIOD_LOW, 8'hFF);
+        apu_write_register(`HWREG_NR24_CHANNEL2_PERIOD_HIGH_CONTROL, 8'h87);
+        apu_write_register(`HWREG_NR42_CHANNEL4_VOLUME_ENVELOPE, 8'hF0);
+        apu_write_register(`HWREG_NR43_CHANNEL4_FREQUENCY_RANDOMNESS, 8'h08);
+        apu_write_register(`HWREG_NR44_CHANNEL4_CONTROL, 8'h80);
+        apu_write_register(`HWREG_NR51_SOUND_PANNING, 8'hFF);
+        apu_write_register(`HWREG_NR52_AUDIO_MASTER_CONTROL, 8'h77);
 
         #(100000 * STEP)
 
