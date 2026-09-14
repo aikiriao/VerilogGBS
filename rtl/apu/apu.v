@@ -1,4 +1,5 @@
 `timescale 1ns/1ns
+`include "sm83_register_address.vh"
 
 module apu #(
     parameter CLOCK_HZ = 2097152, // クロック動作周波数
@@ -14,35 +15,32 @@ module apu #(
     output reg signed [SIGNAL_BIT_WIDTH-1:0] o_r_signal // 右チャンネル信号
 );
 
-    // レジスタアドレス定義
-    `include "sm83_register_address.vh"
-
     localparam HPF_COEFFIENT_FIXED = $rtoi(0.999958 * (1 << (SIGNAL_BIT_WIDTH - 1)));
     localparam [SIGNAL_BIT_WIDTH-1:0] HPF_COEFFIENT = HPF_COEFFIENT_FIXED[SIGNAL_BIT_WIDTH-1:0]; // HPF係数
 
     // 各レジスタの書き込み信号
-    wire nr10_write = i_we_register & (i_address == HWREG_NR10_CHANNEL1_SWEEP);
-    wire nr11_write = i_we_register & (i_address == HWREG_NR11_CHANNEL1_LENGTH_TIMER_DURY_CYCLE);
-    wire nr12_write = i_we_register & (i_address == HWREG_NR12_CHANNEL1_VOLUME_ENVELOPE);
-    wire nr13_write = i_we_register & (i_address == HWREG_NR13_CHANNEL1_PERIOD_LOW);
-    wire nr14_write = i_we_register & (i_address == HWREG_NR14_CHANNEL1_PERIOD_HIGH_CONTROL);
-    wire nr21_write = i_we_register & (i_address == HWREG_NR21_CHANNEL2_LENGTH_TIMER_DURY_CYCLE);
-    wire nr22_write = i_we_register & (i_address == HWREG_NR22_CHANNEL2_VOLUME_ENVELOPE);
-    wire nr23_write = i_we_register & (i_address == HWREG_NR23_CHANNEL2_PERIOD_LOW);
-    wire nr24_write = i_we_register & (i_address == HWREG_NR24_CHANNEL2_PERIOD_HIGH_CONTROL);
-    wire nr30_write = i_we_register & (i_address == HWREG_NR30_CHANNEL3_DAC_ENABLE);
-    wire nr31_write = i_we_register & (i_address == HWREG_NR31_CHANNEL3_LENGTH_TIMER);
-    wire nr32_write = i_we_register & (i_address == HWREG_NR32_CHANNEL3_OUTPUT_LEVEL);
-    wire nr33_write = i_we_register & (i_address == HWREG_NR33_CHANNEL3_PERIOD_LOW);
-    wire nr34_write = i_we_register & (i_address == HWREG_NR34_CHANNEL3_PERIOD_HIGH_CONTROL);
-    wire nr41_write = i_we_register & (i_address == HWREG_NR41_CHANNEL4_LENGTH_TIMER);
-    wire nr42_write = i_we_register & (i_address == HWREG_NR42_CHANNEL4_VOLUME_ENVELOPE);
-    wire nr43_write = i_we_register & (i_address == HWREG_NR43_CHANNEL4_FREQUENCY_RANDOMNESS);
-    wire nr44_write = i_we_register & (i_address == HWREG_NR44_CHANNEL4_CONTROL);
-    wire nr50_write = i_we_register & (i_address == HWREG_NR50_MASTER_VOLUME_VIN_PANNING);
-    wire nr51_write = i_we_register & (i_address == HWREG_NR51_SOUND_PANNING);
-    wire nr52_write = i_we_register & (i_address == HWREG_NR52_AUDIO_MASTER_CONTROL);
-    wire waveram_write = i_we_register & (i_address >= HWREG_CHANNEL3_WAVE_PATTERN_RAM_START) & (i_address <= HWREG_CHANNEL3_WAVE_PATTERN_RAM_END);
+    wire nr10_write = i_we_register & (i_address == `HWREG_NR10_CHANNEL1_SWEEP);
+    wire nr11_write = i_we_register & (i_address == `HWREG_NR11_CHANNEL1_LENGTH_TIMER_DURY_CYCLE);
+    wire nr12_write = i_we_register & (i_address == `HWREG_NR12_CHANNEL1_VOLUME_ENVELOPE);
+    wire nr13_write = i_we_register & (i_address == `HWREG_NR13_CHANNEL1_PERIOD_LOW);
+    wire nr14_write = i_we_register & (i_address == `HWREG_NR14_CHANNEL1_PERIOD_HIGH_CONTROL);
+    wire nr21_write = i_we_register & (i_address == `HWREG_NR21_CHANNEL2_LENGTH_TIMER_DURY_CYCLE);
+    wire nr22_write = i_we_register & (i_address == `HWREG_NR22_CHANNEL2_VOLUME_ENVELOPE);
+    wire nr23_write = i_we_register & (i_address == `HWREG_NR23_CHANNEL2_PERIOD_LOW);
+    wire nr24_write = i_we_register & (i_address == `HWREG_NR24_CHANNEL2_PERIOD_HIGH_CONTROL);
+    wire nr30_write = i_we_register & (i_address == `HWREG_NR30_CHANNEL3_DAC_ENABLE);
+    wire nr31_write = i_we_register & (i_address == `HWREG_NR31_CHANNEL3_LENGTH_TIMER);
+    wire nr32_write = i_we_register & (i_address == `HWREG_NR32_CHANNEL3_OUTPUT_LEVEL);
+    wire nr33_write = i_we_register & (i_address == `HWREG_NR33_CHANNEL3_PERIOD_LOW);
+    wire nr34_write = i_we_register & (i_address == `HWREG_NR34_CHANNEL3_PERIOD_HIGH_CONTROL);
+    wire nr41_write = i_we_register & (i_address == `HWREG_NR41_CHANNEL4_LENGTH_TIMER);
+    wire nr42_write = i_we_register & (i_address == `HWREG_NR42_CHANNEL4_VOLUME_ENVELOPE);
+    wire nr43_write = i_we_register & (i_address == `HWREG_NR43_CHANNEL4_FREQUENCY_RANDOMNESS);
+    wire nr44_write = i_we_register & (i_address == `HWREG_NR44_CHANNEL4_CONTROL);
+    wire nr50_write = i_we_register & (i_address == `HWREG_NR50_MASTER_VOLUME_VIN_PANNING);
+    wire nr51_write = i_we_register & (i_address == `HWREG_NR51_SOUND_PANNING);
+    wire nr52_write = i_we_register & (i_address == `HWREG_NR52_AUDIO_MASTER_CONTROL);
+    wire waveram_write = i_we_register & (i_address >= `HWREG_CHANNEL3_WAVE_PATTERN_RAM_START) & (i_address <= `HWREG_CHANNEL3_WAVE_PATTERN_RAM_END);
 
     // 各チャンネルの出力フラグと出力信号
     wire [3:0] ch_enable;
@@ -243,53 +241,53 @@ module apu #(
     function [7:0] read_register;
         input [15:0] address;
 
-        if ((address >= HWREG_CHANNEL3_WAVE_PATTERN_RAM_START) 
-                & (address <= HWREG_CHANNEL3_WAVE_PATTERN_RAM_END)) begin
+        if ((address >= `HWREG_CHANNEL3_WAVE_PATTERN_RAM_START) 
+                & (address <= `HWREG_CHANNEL3_WAVE_PATTERN_RAM_END)) begin
             read_register = r_sg_wave_pcm;
         end else begin
             // TODO: 一部のレジスタは部分的に読み出せる
             case (address)
-                HWREG_NR10_CHANNEL1_SWEEP:
+                `HWREG_NR10_CHANNEL1_SWEEP:
                     read_register = nr10_ch1_sweep;
-                HWREG_NR11_CHANNEL1_LENGTH_TIMER_DURY_CYCLE:
+                `HWREG_NR11_CHANNEL1_LENGTH_TIMER_DURY_CYCLE:
                     read_register = nr11_ch1_timer_duty_ratio;
-                HWREG_NR12_CHANNEL1_VOLUME_ENVELOPE:
+                `HWREG_NR12_CHANNEL1_VOLUME_ENVELOPE:
                     read_register = nr12_ch1_volume_envelope;
-                HWREG_NR13_CHANNEL1_PERIOD_LOW:
+                `HWREG_NR13_CHANNEL1_PERIOD_LOW:
                     read_register = nr13_ch1_period_low;
-                HWREG_NR14_CHANNEL1_PERIOD_HIGH_CONTROL:
+                `HWREG_NR14_CHANNEL1_PERIOD_HIGH_CONTROL:
                     read_register = nr14_ch1_period_high_control;
-                HWREG_NR21_CHANNEL2_LENGTH_TIMER_DURY_CYCLE:
+                `HWREG_NR21_CHANNEL2_LENGTH_TIMER_DURY_CYCLE:
                     read_register = nr21_ch2_timer_duty_ratio;
-                HWREG_NR22_CHANNEL2_VOLUME_ENVELOPE:
+                `HWREG_NR22_CHANNEL2_VOLUME_ENVELOPE:
                     read_register = nr22_ch2_volume_envelope;
-                HWREG_NR23_CHANNEL2_PERIOD_LOW:
+                `HWREG_NR23_CHANNEL2_PERIOD_LOW:
                     read_register = nr23_ch2_period_low;
-                HWREG_NR24_CHANNEL2_PERIOD_HIGH_CONTROL:
+                `HWREG_NR24_CHANNEL2_PERIOD_HIGH_CONTROL:
                     read_register = nr24_ch2_period_high_control;
-                HWREG_NR30_CHANNEL3_DAC_ENABLE:
+                `HWREG_NR30_CHANNEL3_DAC_ENABLE:
                     read_register = nr30_ch3_dac_enable;
-                HWREG_NR31_CHANNEL3_LENGTH_TIMER:
+                `HWREG_NR31_CHANNEL3_LENGTH_TIMER:
                     read_register = nr31_ch3_length_timer;
-                HWREG_NR32_CHANNEL3_OUTPUT_LEVEL:
+                `HWREG_NR32_CHANNEL3_OUTPUT_LEVEL:
                     read_register = nr32_ch3_output_level;
-                HWREG_NR33_CHANNEL3_PERIOD_LOW:
+                `HWREG_NR33_CHANNEL3_PERIOD_LOW:
                     read_register = nr33_ch3_period_low;
-                HWREG_NR34_CHANNEL3_PERIOD_HIGH_CONTROL:
+                `HWREG_NR34_CHANNEL3_PERIOD_HIGH_CONTROL:
                     read_register = nr34_ch3_period_high_control;
-                HWREG_NR41_CHANNEL4_LENGTH_TIMER:
+                `HWREG_NR41_CHANNEL4_LENGTH_TIMER:
                     read_register = nr41_ch4_length_timer;
-                HWREG_NR42_CHANNEL4_VOLUME_ENVELOPE:
+                `HWREG_NR42_CHANNEL4_VOLUME_ENVELOPE:
                     read_register = nr42_ch4_volume_envelope;
-                HWREG_NR43_CHANNEL4_FREQUENCY_RANDOMNESS:
+                `HWREG_NR43_CHANNEL4_FREQUENCY_RANDOMNESS:
                     read_register = nr43_ch4_frequency_randomness;
-                HWREG_NR44_CHANNEL4_CONTROL:
+                `HWREG_NR44_CHANNEL4_CONTROL:
                     read_register = nr44_ch4_control;
-                HWREG_NR50_MASTER_VOLUME_VIN_PANNING:
+                `HWREG_NR50_MASTER_VOLUME_VIN_PANNING:
                     read_register = nr50_master_volume_vin_panning;
-                HWREG_NR51_SOUND_PANNING:
+                `HWREG_NR51_SOUND_PANNING:
                     read_register = nr51_sound_panning;
-                HWREG_NR52_AUDIO_MASTER_CONTROL:
+                `HWREG_NR52_AUDIO_MASTER_CONTROL:
                     read_register = nr52_audio_master_control;
                 default:
                     read_register = 8'h00;

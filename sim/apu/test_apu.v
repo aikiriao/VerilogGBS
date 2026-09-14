@@ -1,12 +1,10 @@
 `include "test.vh"
+`include "sm83_register_address.vh"
 `timescale 1ns/1ns
 
 module test_apu;
     parameter STEP = 10;
     localparam SIGNAL_BIT_WIDTH = 16;
-
-    // レジスタアドレス定義
-    `include "sm83_register_address.vh"
 
     reg clk;
     reg rst_n;
@@ -43,6 +41,7 @@ module test_apu;
             rst_n = 0;
             @(posedge clk);
             @(negedge clk);
+            rst_n = 1;
 
             `ASSERT_EQ(apu.ch_enable, 0);
             `ASSERT_EQ(apu.ch_dac_enable, 0);
@@ -116,10 +115,11 @@ module test_apu;
         apu_reset();
 
         // CH1をトリガーしてみる
-        apu_write_register(HWREG_NR13_CHANNEL1_PERIOD_LOW, 8'hFF);
-        apu_write_register(HWREG_NR14_CHANNEL1_PERIOD_HIGH_CONTROL, 8'h87);
+        apu_write_register(`HWREG_NR12_CHANNEL1_VOLUME_ENVELOPE, 8'hF0);
+        apu_write_register(`HWREG_NR13_CHANNEL1_PERIOD_LOW, 8'hFF);
+        apu_write_register(`HWREG_NR14_CHANNEL1_PERIOD_HIGH_CONTROL, 8'h87);
 
-        #(100 * STEP)
+        #(100000 * STEP)
 
         $finish;
     end
