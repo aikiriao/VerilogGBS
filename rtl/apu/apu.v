@@ -118,7 +118,7 @@ module apu #(
         .i_clk(i_clk),
         .i_rst_n(i_rst_n),
         // スイープに関するポートは0にして無効化
-        .i_we_period_sweep(0),
+        .i_we_period_sweep(1'b0),
         .i_period_sweep_pace(3'h0),
         .i_period_sweep_direction(1'h0),
         .i_period_sweep_step(3'h0),
