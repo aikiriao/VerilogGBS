@@ -14,6 +14,7 @@ module test_apu;
     wire [7:0] r_data;
     wire signed [SIGNAL_BIT_WIDTH-1:0] l_signal;
     wire signed [SIGNAL_BIT_WIDTH-1:0] r_signal;
+    integer clk_count;
 
     apu #(
         .CLOCK_HZ(2097152),
@@ -31,6 +32,10 @@ module test_apu;
 
     always #(STEP/2) begin
         clk = ~clk;
+    end
+
+    always @(posedge clk) begin
+        clk_count <= clk_count + 1;
     end
 
     // リセットタスク
@@ -106,6 +111,72 @@ module test_apu;
         end
     endtask
 
+    task automatic apu_reference_test(
+        input [8*128-1:0] input_file_path
+    );
+        integer fd;
+        integer result;
+        integer next_clock;
+        reg [7:0] command;
+        reg [15:0] write_address;
+        reg [7:0] write_data;
+        reg [3:0] ch_out[0:3];
+        reg ch_enable[0:3];
+        reg [8*256-1:0] line;
+
+        begin
+            fd = $fopen(input_file_path, "r");
+            `ASSERT_NEQ(fd, 0);
+
+            // ファイルの終端までループ
+            clk_count = 0;
+            while ($feof(fd) == 0) begin
+                result = $fgets(line, fd);
+                `ASSERT_TRUE(result > 0);
+                result = $sscanf(line, "%d %s", next_clock, command);
+                `ASSERT_TRUE(result > 0);
+
+                `ASSERT_TRUE(next_clock >= clk_count);
+                #((next_clock - clk_count) * STEP);
+
+                if (command == "W") begin
+                    result = $sscanf(line, "%d %s %h %h", next_clock, command, write_address, write_data);
+                    `ASSERT_EQ(result, 4);
+                    $display("%d W %h %h", clk_count, write_address, write_data);
+                    apu_write_register(write_address, write_data);
+                end else if (command == "O") begin
+                    result = $sscanf(line,
+                        "%d %s %h %h %h %h %b %b %b %b",
+                        next_clock, command,
+                        ch_out[0], ch_out[1], ch_out[2], ch_out[3],
+                        ch_enable[0], ch_enable[1], ch_enable[2], ch_enable[3]);
+                    `ASSERT_EQ(result, 10);
+                    if ((ch_out[0] !== apu.ch_signal[0])
+                        || (ch_out[1] !== apu.ch_signal[1])
+                        || (ch_out[2] !== apu.ch_signal[2])
+                        || (ch_out[3] !== apu.ch_signal[3])) begin
+                        $display("Output Mismatch At %d clock", clk_count);
+                        $display("Reference %h %h %h %h", ch_out[0], ch_out[1], ch_out[2], ch_out[3]);
+                        $display("      RTL %h %h %h %h", apu.ch_signal[0], apu.ch_signal[1], apu.ch_signal[2], apu.ch_signal[3]);
+                        $finish;
+                    end
+                    if ((ch_enable[0] !== apu.ch_enable[0])
+                        || (ch_enable[1] !== apu.ch_enable[1])
+                        || (ch_enable[2] !== apu.ch_enable[2])
+                        || (ch_enable[3] !== apu.ch_enable[3])) begin
+                        $display("Enable Flag Mismatch At %d clock", clk_count);
+                        $display("Reference %b %b %b %b", ch_enable[0], ch_enable[1], ch_enable[2], ch_enable[3]);
+                        $display("      RTL %b %b %b %b", apu.ch_enable[0], apu.ch_enable[1], apu.ch_enable[2], apu.ch_enable[3]);
+                        $finish;
+                    end
+                end
+            end
+
+            // ファイルを閉じる
+            $fclose(fd);
+        end
+    endtask
+
     initial begin
         $dumpfile("build/test_apu.vcd");
         $dumpvars(0, test_apu);
@@ -115,19 +186,20 @@ module test_apu;
         apu_reset();
 
         // CH1,2,3をトリガーしてみる
-        apu_write_register(`HWREG_NR12_CHANNEL1_VOLUME_ENVELOPE, 8'hF0);
-        apu_write_register(`HWREG_NR13_CHANNEL1_PERIOD_LOW, 8'hFF);
-        apu_write_register(`HWREG_NR14_CHANNEL1_PERIOD_HIGH_CONTROL, 8'h87);
-        apu_write_register(`HWREG_NR22_CHANNEL2_VOLUME_ENVELOPE, 8'hF0);
-        apu_write_register(`HWREG_NR23_CHANNEL2_PERIOD_LOW, 8'hFF);
-        apu_write_register(`HWREG_NR24_CHANNEL2_PERIOD_HIGH_CONTROL, 8'h87);
-        apu_write_register(`HWREG_NR42_CHANNEL4_VOLUME_ENVELOPE, 8'hF0);
-        apu_write_register(`HWREG_NR43_CHANNEL4_FREQUENCY_RANDOMNESS, 8'h08);
-        apu_write_register(`HWREG_NR44_CHANNEL4_CONTROL, 8'h80);
-        apu_write_register(`HWREG_NR51_SOUND_PANNING, 8'hFF);
-        apu_write_register(`HWREG_NR52_AUDIO_MASTER_CONTROL, 8'h77);
+        // apu_write_register(`HWREG_NR12_CHANNEL1_VOLUME_ENVELOPE, 8'hF0);
+        // apu_write_register(`HWREG_NR13_CHANNEL1_PERIOD_LOW, 8'hFF);
+        // apu_write_register(`HWREG_NR14_CHANNEL1_PERIOD_HIGH_CONTROL, 8'h87);
+        // apu_write_register(`HWREG_NR22_CHANNEL2_VOLUME_ENVELOPE, 8'hF0);
+        // apu_write_register(`HWREG_NR23_CHANNEL2_PERIOD_LOW, 8'hFF);
+        // apu_write_register(`HWREG_NR24_CHANNEL2_PERIOD_HIGH_CONTROL, 8'h87);
+        // apu_write_register(`HWREG_NR42_CHANNEL4_VOLUME_ENVELOPE, 8'hF0);
+        // apu_write_register(`HWREG_NR43_CHANNEL4_FREQUENCY_RANDOMNESS, 8'h08);
+        // apu_write_register(`HWREG_NR44_CHANNEL4_CONTROL, 8'h80);
+        // apu_write_register(`HWREG_NR51_SOUND_PANNING, 8'hFF);
+        // apu_write_register(`HWREG_NR52_AUDIO_MASTER_CONTROL, 8'h77);
+        // #(100000 * STEP)
 
-        #(100000 * STEP)
+        apu_reference_test("testdata/apu/pkred_op1.txt");
 
         $finish;
     end
