@@ -122,11 +122,16 @@ module test_apu;
         reg [7:0] write_data;
         reg [3:0] ch_out[0:3];
         reg ch_enable[0:3];
+        reg [15:0] lfsr;
+        reg [2:0] pulse_table_index[0:1];
+        reg [4:0] wave_ram_index;
         reg [8*256-1:0] line;
 
         begin
             fd = $fopen(input_file_path, "r");
             `ASSERT_NEQ(fd, 0);
+
+            apu_reset();
 
             // ファイルの終端までループ
             clk_count = 0;
@@ -136,8 +141,14 @@ module test_apu;
                 result = $sscanf(line, "%d %s", next_clock, command);
                 `ASSERT_TRUE(result > 0);
 
+                // ソフトウェアのクロック-1まで進める
+                // 理由：ソフトウェアの出力はクロック終了後の値だから
                 `ASSERT_TRUE(next_clock >= clk_count);
-                #((next_clock - clk_count) * STEP);
+                while (clk_count < (next_clock - 1)) begin
+                    @(posedge clk);
+                    @(negedge clk);
+                end
+                `ASSERT_EQ(next_clock - 1, clk_count);
 
                 if (command == "W") begin
                     result = $sscanf(line, "%d %s %h %h", next_clock, command, write_address, write_data);
@@ -146,18 +157,27 @@ module test_apu;
                     apu_write_register(write_address, write_data);
                 end else if (command == "O") begin
                     result = $sscanf(line,
-                        "%d %s %h %h %h %h %b %b %b %b",
+                        "%d %s %h %h %h %h %b %b %b %b %h %h %d %h",
                         next_clock, command,
                         ch_out[0], ch_out[1], ch_out[2], ch_out[3],
-                        ch_enable[0], ch_enable[1], ch_enable[2], ch_enable[3]);
-                    `ASSERT_EQ(result, 10);
+                        ch_enable[0], ch_enable[1], ch_enable[2], ch_enable[3],
+                        pulse_table_index[0], pulse_table_index[1], wave_ram_index, lfsr
+                    );
+                    $display("%d %h %h %h %h %h %h %d %h",
+                        next_clock, ch_out[0], ch_out[1], ch_out[2], ch_out[3],
+                        apu.pg1.pulse_table_index, apu.pg2.pulse_table_index, apu.sg.wave_ram_index, apu.ng.lfsr);
+                    `ASSERT_EQ(result, 14);
                     if ((ch_out[0] !== apu.ch_signal[0])
                         || (ch_out[1] !== apu.ch_signal[1])
                         || (ch_out[2] !== apu.ch_signal[2])
                         || (ch_out[3] !== apu.ch_signal[3])) begin
                         $display("Output Mismatch At %d clock", clk_count);
-                        $display("Reference %h %h %h %h", ch_out[0], ch_out[1], ch_out[2], ch_out[3]);
-                        $display("      RTL %h %h %h %h", apu.ch_signal[0], apu.ch_signal[1], apu.ch_signal[2], apu.ch_signal[3]);
+                        $display("Reference %h %h %h %h %h %h %d %h",
+                            ch_out[0], ch_out[1], ch_out[2], ch_out[3],
+                            pulse_table_index[0], pulse_table_index[1], wave_ram_index, lfsr);
+                        $display("      RTL %h %h %h %h %h %h %d %h",
+                            apu.ch_signal[0], apu.ch_signal[1], apu.ch_signal[2], apu.ch_signal[3],
+                            apu.pg1.pulse_table_index, apu.pg2.pulse_table_index, apu.sg.wave_ram_index, apu.ng.lfsr);
                         $finish;
                     end
                     if ((ch_enable[0] !== apu.ch_enable[0])

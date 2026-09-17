@@ -78,11 +78,16 @@ module noise_generator #(
             lfsr_mask <= 0;
         end else if (i_we_frequency_randomness) begin
             // 分周比周期
-            if (i_clock_divider == 0) begin
-                clk_div_period <= (i_clock_shift == 0) ? 0 : (1 << (i_clock_shift - 1));
-            end else begin
-                clk_div_period <= (1 << i_clock_shift);
-            end
+            case (i_clock_divider)
+                3'd0: clk_div_period <= (i_clock_shift == 0) ? 0 : (1 << (i_clock_shift - 1));
+                3'd1: clk_div_period <= (1 << i_clock_shift);
+                3'd2: clk_div_period <= 2 * (1 << i_clock_shift);
+                3'd3: clk_div_period <= 3 * (1 << i_clock_shift);
+                3'd4: clk_div_period <= 4 * (1 << i_clock_shift);
+                3'd5: clk_div_period <= 5 * (1 << i_clock_shift);
+                3'd6: clk_div_period <= 6 * (1 << i_clock_shift);
+                3'd7: clk_div_period <= 7 * (1 << i_clock_shift);
+            endcase
             // LFSRのマスク
             lfsr_mask <= (i_lfsr_mode) ? 16'h8080 : 16'h8000;
         end
