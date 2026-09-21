@@ -33,7 +33,7 @@ test_%: $(BUILD_DIR)
 		-Isim/include \
 	   	-f $(FILELIST_DIR)/test_$*.f || :
 	$(IVERILOG) \
-		-g2001 -Wall \
+		-g2001 -Wall -Wno-sensitivity-entire-array \
 		-s test_$* \
 		-I rtl/include \
 		-I sim/include \

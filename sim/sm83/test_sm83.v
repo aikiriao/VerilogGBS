@@ -5,13 +5,17 @@
 module test_sm83;
     parameter STEP = 10;
 
+    `include "sm83_defs.vh"
+
     reg clk;
     reg rst_n;
-    reg [7:0] r_data;
+    reg [7:0] memory[0:65535];
+    wire [7:0] r_data;
     wire [15:0] address;
     wire [7:0] w_data;
     wire re;
     wire we;
+    integer i;
 
     sm83 cpu (
         .i_clk(clk),
@@ -27,6 +31,30 @@ module test_sm83;
         clk = ~clk;
     end
 
+    // メモリ
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            for (i = 0; i < 65536; i = i + 1) begin
+                memory[i] <= 0;
+            end
+        end else if (we) begin
+            memory[address] <= w_data;
+        end
+    end
+    assign r_data = (re) ? memory[address] : 8'd0;
+
+    // 16bitの乱数生成
+    /* verilator lint_off UNUSEDSIGNAL */
+    task automatic random16;
+        output reg [15:0] r16;
+        reg [31:0] r;
+        begin
+            r = $random;
+            r16 = r[15:0];
+        end
+    endtask
+    /* verilator lint_on UNUSEDSIGNAL */
+
     // リセットタスク
     task automatic sm83_reset;
         begin
@@ -34,6 +62,112 @@ module test_sm83;
             @(posedge clk);
             @(negedge clk);
             rst_n = 1;
+
+            for (i = 0; i < 8; i = i + 1) begin
+                `ASSERT_EQ(cpu.r8[i], 0);
+            end
+            `ASSERT_EQ(cpu.flags, 0);
+            `ASSERT_EQ(cpu.sp, 0);
+            `ASSERT_EQ(cpu.pc, 0);
+            `ASSERT_EQ(cpu.mcycle, 0);
+            `ASSERT_EQ(cpu.opcode, 0);
+            `ASSERT_EQ(cpu.r8_dst, 0);
+            `ASSERT_EQ(cpu.r8_we, 0);
+            `ASSERT_EQ(cpu.r8_w_data, 0);
+            `ASSERT_EQ(cpu.tmpr, 0);
+            `ASSERT_EQ(cpu.next_mcycle, 1); // NOPが読み込まれて1進む
+            `ASSERT_EQ(cpu.next_opcode, 0);
+            `ASSERT_EQ(cpu.next_pc, 1); // NOPが読み込まれて1進む
+            `ASSERT_EQ(cpu.next_flags, 0);
+            `ASSERT_EQ(cpu.next_sp, 0);
+            `ASSERT_EQ(cpu.next_tmpr, 0);
+        end
+    endtask
+
+    // NOP命令のテスト
+    task automatic sm83_nop_test;
+        begin
+            sm83_reset();
+
+            memory[0] = 8'h00;
+            memory[1] = 8'h00;
+
+            // 1クロック進める
+            @(posedge clk);
+            @(negedge clk);
+
+            for (i = 0; i < 8; i = i + 1) begin
+                `EXPECT_EQ(cpu.r8[i], 0);
+            end
+            `EXPECT_EQ(cpu.flags, 0);
+            `EXPECT_EQ(cpu.sp, 0);
+            `EXPECT_EQ(cpu.pc, 1); // PCは1進む
+            `EXPECT_EQ(cpu.mcycle, 1);
+            `EXPECT_EQ(cpu.opcode, 0);
+            `EXPECT_EQ(cpu.r8_dst, 0);
+            `EXPECT_EQ(cpu.r8_we, 0);
+            `EXPECT_EQ(cpu.r8_w_data, 0);
+            `EXPECT_EQ(cpu.tmpr, 0);
+            `EXPECT_EQ(cpu.next_mcycle, 0);
+            `EXPECT_EQ(cpu.next_opcode, 0);
+            `EXPECT_EQ(cpu.next_pc, 1); // 1進んだ状態で止まる
+            `EXPECT_EQ(cpu.next_flags, 0);
+            `EXPECT_EQ(cpu.next_sp, 0);
+            `EXPECT_EQ(cpu.next_tmpr, 0);
+        end
+    endtask
+
+    // LD r16, imm16のテスト
+    task automatic sm83_ld16_imm16_test_sub;
+        input reg [1:0] dst;
+        integer c;
+        reg [15:0] imm16;
+        localparam iteration = 10;
+
+        begin
+            for (c = 0; c < iteration; c = c + 1) begin
+                sm83_reset();
+                
+                // 命令を生成
+                memory[0] = {2'b00, dst, 4'b0001};
+                // imm16は乱数
+                random16(imm16);
+                memory[1] = imm16[7:0];
+                memory[2] = imm16[15:8];
+
+                // 3クロック進める
+                repeat (3) @(posedge clk);
+                @(negedge clk);
+
+                `EXPECT_EQ(cpu.pc, 3); // PCは次の3を指す
+                case (dst)
+                    R16_BC: begin
+                        `EXPECT_EQ(cpu.r8[R8_B], imm16[15:8]);
+                        `EXPECT_EQ(cpu.r8[R8_C], imm16[7:0]);
+                    end
+                    R16_DE: begin
+                        `EXPECT_EQ(cpu.r8[R8_D], imm16[15:8]);
+                        `EXPECT_EQ(cpu.r8[R8_E], imm16[7:0]);
+                    end
+                    R16_HL: begin
+                        `EXPECT_EQ(cpu.r8[R8_H], imm16[15:8]);
+                        `EXPECT_EQ(cpu.r8[R8_L], imm16[7:0]);
+                    end
+                    R16_SP: begin
+                        `EXPECT_EQ(cpu.sp, imm16);
+                    end
+                endcase
+            end
+        end
+    endtask
+
+    // LD r16, imm16のテスト
+    task automatic sm83_ld16_imm16_test;
+        begin
+            sm83_ld16_imm16_test_sub(R16_BC);
+            sm83_ld16_imm16_test_sub(R16_DE);
+            sm83_ld16_imm16_test_sub(R16_HL);
+            sm83_ld16_imm16_test_sub(R16_SP);
         end
     endtask
 
@@ -43,7 +177,8 @@ module test_sm83;
 
         clk = 0;
 
-        sm83_reset();
+        sm83_nop_test();
+        sm83_ld16_imm16_test();
 
         $finish;
     end
