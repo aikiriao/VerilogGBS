@@ -261,22 +261,25 @@ module sm83 (
                         case (opcode[5:4]) 
                             R16MEM_BC: o_address = get_r16(R16_BC);
                             R16MEM_DE: o_address = get_r16(R16_DE);
-                            R16MEM_HL_INC: o_address = get_r16(R16_HL);
-                            R16MEM_HL_DEC: o_address = get_r16(R16_HL);
+                            R16MEM_HL_INC: begin
+                                o_address = get_r16(R16_HL);
+                                // HLを増やす
+                                r16_w_data = get_r16(R16_HL) + 16'd1;
+                                r16_dst = R16_HL;
+                                r16_we = 1;
+                            end
+                            R16MEM_HL_DEC: begin
+                                o_address = get_r16(R16_HL);
+                                // HLを減らす
+                                r16_w_data = get_r16(R16_HL) - 16'd1;
+                                r16_dst = R16_HL;
+                                r16_we = 1;
+                            end
                         endcase
                         o_we = 1;
                         o_w_data = r8[R8_A];
                         next_mcycle = 8'd2;
                     end else if (mcycle == 8'd2) begin
-                        if (opcode[5:4] == R16MEM_HL_INC) begin
-                            r16_w_data = get_r16(R16_HL) + 16'd1;
-                            r16_dst = R16_HL;
-                            r16_we = 1;
-                        end else if (opcode[5:4] == R16MEM_HL_DEC) begin
-                            r16_w_data = get_r16(R16_HL) - 16'd1;
-                            r16_dst = R16_HL;
-                            r16_we = 1;
-                        end
                         o_address = pc;
                         o_re = 1;
                         next_pc = pc + 16'd1;
@@ -285,6 +288,36 @@ module sm83 (
                 end
                 OP_LD_INDIRECT_TO_A: begin
                     // LD a, [r16]
+                    if (mcycle == 8'd1) begin
+                        case (opcode[5:4]) 
+                            R16MEM_BC: o_address = get_r16(R16_BC);
+                            R16MEM_DE: o_address = get_r16(R16_DE);
+                            R16MEM_HL_INC: begin
+                                o_address = get_r16(R16_HL);
+                                // HLを増やす
+                                r16_w_data = get_r16(R16_HL) + 16'd1;
+                                r16_dst = R16_HL;
+                                r16_we = 1;
+                            end
+                            R16MEM_HL_DEC: begin
+                                o_address = get_r16(R16_HL);
+                                // HLを減らす
+                                r16_w_data = get_r16(R16_HL) - 16'd1;
+                                r16_dst = R16_HL;
+                                r16_we = 1;
+                            end
+                        endcase
+                        r8_w_data = i_r_data;
+                        r8_dst = R8_A;
+                        r8_we = 1;
+                        o_re = 1;
+                        next_mcycle = 8'd2;
+                    end else if (mcycle == 8'd2) begin
+                        o_address = pc;
+                        o_re = 1;
+                        next_pc = pc + 16'd1;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_INC16: begin
                 end

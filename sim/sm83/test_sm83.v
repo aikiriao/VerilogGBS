@@ -223,6 +223,11 @@ module test_sm83;
 
                 `EXPECT_EQ(cpu.pc, 1); // PCは次の1を指す
                 `EXPECT_EQ(memory[imm16], imm8); // 意図された値が書き込まれているか
+                if (dst == R16MEM_HL_INC) begin
+                    `EXPECT_EQ({cpu.r8[R8_H], cpu.r8[R8_L]}, imm16 + 16'd1);
+                end else if (dst == R16MEM_HL_DEC) begin
+                    `EXPECT_EQ({cpu.r8[R8_H], cpu.r8[R8_L]}, imm16 - 16'd1);
+                end
             end
         end
     endtask
@@ -237,6 +242,68 @@ module test_sm83;
         end
     endtask
 
+    // LD [imm16], aのテスト
+    task automatic sm83_ld_indirect_to_a_test_sub;
+        input reg [1:0] src;
+        integer c;
+        reg [15:0] imm16;
+        reg [7:0] imm8;
+        localparam iteration = 10;
+
+        begin
+            for (c = 0; c < iteration; c = c + 1) begin
+                sm83_reset();
+                
+                // 命令を生成
+                memory[0] = {2'b00, src, 4'b1010};
+
+                // ランダムなアドレスにランダムな値を書き込む
+                random8(imm8);
+                random16(imm16);
+                memory[imm16] = imm8;
+                case (src)
+                    R16MEM_BC: begin
+                        cpu.r8[R8_B] = imm16[15:8];
+                        cpu.r8[R8_C] = imm16[7:0];
+                    end
+                    R16MEM_DE: begin
+                        cpu.r8[R8_D] = imm16[15:8];
+                        cpu.r8[R8_E] = imm16[7:0];
+                    end
+                    R16MEM_HL_INC: begin
+                        cpu.r8[R8_H] = imm16[15:8];
+                        cpu.r8[R8_L] = imm16[7:0];
+                    end
+                    R16MEM_HL_DEC: begin
+                        cpu.r8[R8_H] = imm16[15:8];
+                        cpu.r8[R8_L] = imm16[7:0];
+                    end
+                endcase
+
+                repeat (2) @(posedge clk);
+                @(negedge clk);
+
+                `EXPECT_EQ(cpu.pc, 1); // PCは次の1を指す
+                `EXPECT_EQ(cpu.r8[R8_A], imm8); // 意図された値が書き込まれているか
+                if (src == R16MEM_HL_INC) begin
+                    `EXPECT_EQ({cpu.r8[R8_H], cpu.r8[R8_L]}, imm16 + 16'd1);
+                end else if (src == R16MEM_HL_DEC) begin
+                    `EXPECT_EQ({cpu.r8[R8_H], cpu.r8[R8_L]}, imm16 - 16'd1);
+                end
+            end
+        end
+    endtask
+
+    // LD a, [imm16]のテスト
+    task automatic sm83_ld_indirect_to_a_test;
+        begin
+            sm83_ld_indirect_to_a_test_sub(R16MEM_BC);
+            sm83_ld_indirect_to_a_test_sub(R16MEM_DE);
+            sm83_ld_indirect_to_a_test_sub(R16MEM_HL_INC);
+            sm83_ld_indirect_to_a_test_sub(R16MEM_HL_DEC);
+        end
+    endtask
+
     initial begin
         $dumpfile("build/test_sm83.vcd");
         $dumpvars(0, test_sm83);
@@ -246,6 +313,7 @@ module test_sm83;
         sm83_nop_test();
         sm83_ld16_imm16_test();
         sm83_ld_a_to_indirect_test();
+        sm83_ld_indirect_to_a_test();
 
         $finish;
     end
