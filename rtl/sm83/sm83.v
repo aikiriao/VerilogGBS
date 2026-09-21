@@ -22,9 +22,13 @@ module sm83 (
     reg [7:0] mcycle; // マシンサイクル
     reg [7:0] opcode; // オペコード
     reg [7:0] op; // オペコードのデコード結果の命令種別
-    reg [2:0] r8_dst; // レジスタディステネーション識別
-    reg r8_we; // レジスタ書き込みイネーブル
-    reg [7:0] r8_w_data; // レジスタ書き込みデータ
+    reg [2:0] r8_dst; // 8bitレジスタディステネーション識別
+    reg r8_we; // 8bitレジスタ書き込みイネーブル
+    reg [7:0] r8_w_data; // 8bitレジスタ書き込みデータ
+    // 命令デコード用
+    reg [1:0] r16_dst; // 16bitレジスタディステネーション識別
+    reg r16_we; // 16bitレジスタ書き込みイネーブル
+    reg [15:0] r16_w_data; // 16bitレジスタ書き込みデータ
     // 命令デコード用
     reg [7:0] tmpr; // 命令デコード用の一時レジスタ
     // 次状態
@@ -36,6 +40,18 @@ module sm83 (
     reg [15:0] next_sp;
     reg [7:0] next_tmpr;
 
+    // 16bitレジスタ値の取得
+    function automatic [15:0] get_r16(
+        input [1:0] r16
+    );
+        case (r16)
+            R16_BC: get_r16 = {r8[R8_B], r8[R8_C]};
+            R16_DE: get_r16 = {r8[R8_D], r8[R8_E]};
+            R16_HL: get_r16 = {r8[R8_H], r8[R8_L]};
+            default: get_r16 = 16'd0;
+        endcase
+    endfunction
+
     // オペコードのデコード
     function automatic [7:0] decode_opcode(
         input [7:0] data
@@ -44,8 +60,8 @@ module sm83 (
         casez (data)
             8'b00000000: decode_opcode = OP_NOP;
             8'b00??0001: decode_opcode = OP_LD16_IMM16;
-            8'b00??0010: decode_opcode = OP_LD16;
-            8'b00??1010: decode_opcode = OP_LD16;
+            8'b00??0010: decode_opcode = OP_LD_A_TO_INDIRECT;
+            8'b00??1010: decode_opcode = OP_LD_INDIRECT_TO_A;
             8'b00001000: decode_opcode = OP_LD16_SP_TO_IMM16_INDIRECT;
             8'b00??0011: decode_opcode = OP_INC16;
             8'b00??1011: decode_opcode = OP_DEC16;
@@ -162,6 +178,14 @@ module sm83 (
             if (r8_we) begin
                 r8[r8_dst] <= r8_w_data;
             end
+            if (r16_we) begin
+                case (r16_dst)
+                    R16_BC: {r8[R8_B], r8[R8_C]} <= r16_w_data;
+                    R16_DE: {r8[R8_D], r8[R8_E]} <= r16_w_data;
+                    R16_HL: {r8[R8_H], r8[R8_L]} <= r16_w_data;
+                    R16_SP: sp <= r16_w_data;
+                endcase
+            end
         end
     end
 
@@ -182,10 +206,13 @@ module sm83 (
         o_re = 0;
         o_we = 0;
 
-        // 8bitレジスタのライトバック信号
+        // 8bit/16bitレジスタのライトバック信号
         r8_w_data = 8'h00;
         r8_dst = 3'd0;
         r8_we = 0;
+        r16_w_data = 16'h0000;
+        r16_dst = 2'd0;
+        r16_we = 0;
 
         // マシンサイクル毎の処理
         if (mcycle == 8'd0) begin
@@ -216,56 +243,48 @@ module sm83 (
                         o_address = pc;
                         o_re = 1;
                         next_pc = pc + 16'd1;
-                        // レジスタ書き込み(SPのみは一時記録)
-                        case (opcode[5:4])
-                            R16_BC: begin
-                                r8_w_data = i_r_data;
-                                r8_dst = R8_C;
-                                r8_we = 1;
-                            end
-                            R16_DE: begin
-                                r8_w_data = i_r_data;
-                                r8_dst = R8_E;
-                                r8_we = 1;
-                            end
-                            R16_HL: begin
-                                r8_w_data = i_r_data;
-                                r8_dst = R8_L;
-                                r8_we = 1;
-                            end
-                            R16_SP: begin
-                                next_tmpr = i_r_data;
-                            end
-                        endcase
+                        next_tmpr = i_r_data;
                         next_mcycle = 8'd2;
                     end else if (mcycle == 8'd2) begin
                         o_address = pc;
                         o_re = 1;
                         next_pc = pc + 16'd1;
-                        case (opcode[5:4])
-                            R16_BC: begin
-                                r8_w_data = i_r_data;
-                                r8_dst = R8_B;
-                                r8_we = 1;
-                            end
-                            R16_DE: begin
-                                r8_w_data = i_r_data;
-                                r8_dst = R8_D;
-                                r8_we = 1;
-                            end
-                            R16_HL: begin
-                                r8_w_data = i_r_data;
-                                r8_dst = R8_H;
-                                r8_we = 1;
-                            end
-                            R16_SP: begin
-                                next_sp = {i_r_data, tmpr};
-                            end
-                        endcase
+                        r16_w_data = {i_r_data, tmpr};
+                        r16_dst = opcode[5:4];
+                        r16_we = 1;
                         next_mcycle = 8'd0;
                     end
                 end
-                OP_LD16: begin
+                OP_LD_A_TO_INDIRECT: begin
+                    // LD [r16], a
+                    if (mcycle == 8'd1) begin
+                        case (opcode[5:4]) 
+                            R16MEM_BC: o_address = get_r16(R16_BC);
+                            R16MEM_DE: o_address = get_r16(R16_DE);
+                            R16MEM_HL_INC: o_address = get_r16(R16_HL);
+                            R16MEM_HL_DEC: o_address = get_r16(R16_HL);
+                        endcase
+                        o_we = 1;
+                        o_w_data = r8[R8_A];
+                        next_mcycle = 8'd2;
+                    end else if (mcycle == 8'd2) begin
+                        if (opcode[5:4] == R16MEM_HL_INC) begin
+                            r16_w_data = get_r16(R16_HL) + 16'd1;
+                            r16_dst = R16_HL;
+                            r16_we = 1;
+                        end else if (opcode[5:4] == R16MEM_HL_DEC) begin
+                            r16_w_data = get_r16(R16_HL) - 16'd1;
+                            r16_dst = R16_HL;
+                            r16_we = 1;
+                        end
+                        o_address = pc;
+                        o_re = 1;
+                        next_pc = pc + 16'd1;
+                        next_mcycle = 8'd0;
+                    end
+                end
+                OP_LD_INDIRECT_TO_A: begin
+                    // LD a, [r16]
                 end
                 OP_INC16: begin
                 end

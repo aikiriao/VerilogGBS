@@ -43,17 +43,26 @@ module test_sm83;
     end
     assign r_data = (re) ? memory[address] : 8'd0;
 
-    // 16bitの乱数生成
+    // 8bitの乱数生成
     /* verilator lint_off UNUSEDSIGNAL */
-    task automatic random16;
-        output reg [15:0] r16;
+    task automatic random8;
+        output reg [7:0] r8;
         reg [31:0] r;
         begin
             r = $random;
-            r16 = r[15:0];
+            r8 = r[7:0];
         end
     endtask
     /* verilator lint_on UNUSEDSIGNAL */
+
+    // 16bitの乱数生成
+    task automatic random16;
+        output reg [15:0] r16;
+        begin
+            random8(r16[15:8]);
+            random8(r16[7:0]);
+        end
+    endtask
 
     // リセットタスク
     task automatic sm83_reset;
@@ -171,6 +180,63 @@ module test_sm83;
         end
     endtask
 
+    // LD a, [imm16]のテスト
+    task automatic sm83_ld_a_to_indirect_test_sub;
+        input reg [1:0] dst;
+        integer c;
+        reg [15:0] imm16;
+        reg [7:0] imm8;
+        localparam iteration = 10;
+
+        begin
+            for (c = 0; c < iteration; c = c + 1) begin
+                sm83_reset();
+                
+                // 命令を生成
+                memory[0] = {2'b00, dst, 4'b0010};
+
+                // ランダムなアドレスにランダムな値を書き込む
+                random8(imm8);
+                random16(imm16);
+                cpu.r8[R8_A] = imm8; 
+                case (dst)
+                    R16MEM_BC: begin
+                        cpu.r8[R8_B] = imm16[15:8];
+                        cpu.r8[R8_C] = imm16[7:0];
+                    end
+                    R16MEM_DE: begin
+                        cpu.r8[R8_D] = imm16[15:8];
+                        cpu.r8[R8_E] = imm16[7:0];
+                    end
+                    R16MEM_HL_INC: begin
+                        cpu.r8[R8_H] = imm16[15:8];
+                        cpu.r8[R8_L] = imm16[7:0];
+                    end
+                    R16MEM_HL_DEC: begin
+                        cpu.r8[R8_H] = imm16[15:8];
+                        cpu.r8[R8_L] = imm16[7:0];
+                    end
+                endcase
+
+                repeat (2) @(posedge clk);
+                @(negedge clk);
+
+                `EXPECT_EQ(cpu.pc, 1); // PCは次の1を指す
+                `EXPECT_EQ(memory[imm16], imm8); // 意図された値が書き込まれているか
+            end
+        end
+    endtask
+
+    // LD a, [imm16]のテスト
+    task automatic sm83_ld_a_to_indirect_test;
+        begin
+            sm83_ld_a_to_indirect_test_sub(R16MEM_BC);
+            sm83_ld_a_to_indirect_test_sub(R16MEM_DE);
+            sm83_ld_a_to_indirect_test_sub(R16MEM_HL_INC);
+            sm83_ld_a_to_indirect_test_sub(R16MEM_HL_DEC);
+        end
+    endtask
+
     initial begin
         $dumpfile("build/test_sm83.vcd");
         $dumpvars(0, test_sm83);
@@ -179,6 +245,7 @@ module test_sm83;
 
         sm83_nop_test();
         sm83_ld16_imm16_test();
+        sm83_ld_a_to_indirect_test();
 
         $finish;
     end
