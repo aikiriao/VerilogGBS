@@ -406,6 +406,78 @@ module test_sm83;
         end
     endtask
 
+    // ADD HL,r16のテスト
+    task automatic sm83_add16_test_sub;
+        input reg [1:0] src;
+        input reg [15:0] src_v;
+        input reg [15:0] hl_v;
+        input reg carry;
+
+        begin
+            sm83_reset();
+            
+            // 命令を生成
+            memory[0] = {2'b00, src, 4'b1001};
+            
+            case (src)
+                R16_BC: begin
+                    cpu.r8[R8_B] = src_v[15:8];
+                    cpu.r8[R8_C] = src_v[7:0];
+                end
+                R16_DE: begin
+                    cpu.r8[R8_D] = src_v[15:8];
+                    cpu.r8[R8_E] = src_v[7:0];
+                end
+                R16_HL: begin
+                    `ASSERT_EQ(src_v, hl_v);
+                    cpu.r8[R8_H] = src_v[15:8];
+                    cpu.r8[R8_L] = src_v[7:0];
+                end
+                R16_SP: begin
+                    cpu.sp = src_v;
+                end
+            endcase
+
+            // HLレジスタ・キャリーフラグのセット
+            cpu.r8[R8_H] = hl_v[15:8];
+            cpu.r8[R8_L] = hl_v[7:0];
+            cpu.flags[FLAG_C] = carry;
+            
+            repeat (2) @(posedge clk);
+            @(negedge clk);
+            
+            `EXPECT_EQ(cpu.pc, 1);
+            `EXPECT_EQ(cpu.flags[FLAG_N], 0);
+            `EXPECT_EQ(cpu.get_r16(R16_HL), src_v + hl_v + carry);
+        end
+    endtask
+
+    // ADD HL,r16のテスト
+    task automatic sm83_add16_test;
+        integer r16_src;
+
+        begin
+            // 境界値付近だけ攻める
+            for (r16_src = 0; r16_src <= 2'd3; r16_src = r16_src + 1) begin
+                if (r16_src[1:0] !== R16_HL) begin
+                    sm83_add16_test_sub(r16_src[1:0], 16'h0000, 16'h0000, 0);
+                    sm83_add16_test_sub(r16_src[1:0], 16'h0000, 16'h0000, 1);
+                    sm83_add16_test_sub(r16_src[1:0], 16'h00FF, 16'h0001, 0);
+                    sm83_add16_test_sub(r16_src[1:0], 16'h00FF, 16'h0000, 1);
+                    sm83_add16_test_sub(r16_src[1:0], 16'hFFFF, 16'h0000, 0);
+                    sm83_add16_test_sub(r16_src[1:0], 16'hFFFF, 16'h0000, 1);
+                    sm83_add16_test_sub(r16_src[1:0], 16'hFFFF, 16'h0001, 0);
+                end
+            end
+            sm83_add16_test_sub(R16_HL, 16'h0000, 16'h0000, 0);
+            sm83_add16_test_sub(R16_HL, 16'h0000, 16'h0000, 1);
+            sm83_add16_test_sub(R16_HL, 16'h0100, 16'h0100, 0);
+            sm83_add16_test_sub(R16_HL, 16'h0100, 16'h0100, 1);
+            sm83_add16_test_sub(R16_HL, 16'hFFFF, 16'hFFFF, 0);
+            sm83_add16_test_sub(R16_HL, 16'hFFFF, 16'hFFFF, 1);
+        end
+    endtask
+
     initial begin
         $dumpfile("build/test_sm83.vcd");
         $dumpvars(0, test_sm83);
@@ -418,6 +490,7 @@ module test_sm83;
         sm83_ld_indirect_to_a_test();
         sm83_inc_r16_test();
         sm83_dec_r16_test();
+        sm83_add16_test();
 
         $finish;
     end

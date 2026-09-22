@@ -53,6 +53,25 @@ module sm83 (
         endcase
     endfunction
 
+    // 16bit加算
+    // 結果をフラグとともに {Z, H, C, result} で返す
+    function automatic [18:0] add16(
+        input [15:0] v1,
+        input [15:0] v2,
+        input carry
+    );
+        reg [16:0] sum;
+        /* verilator lint_off UNUSEDSIGNAL */
+        reg [15:0] half_sum;
+        /* verilator lint_on UNUSEDSIGNAL */
+
+        begin
+            sum = {1'b0, v1} + {1'b0, v2} + carry;
+            half_sum = (v1 & 16'h0FFF) + (v2 & 16'h0FFF) + carry;
+            add16 = { (sum === 0), half_sum[12], sum[15], sum[15:0] };
+        end
+    endfunction
+
     // オペコードのデコード
     function automatic [7:0] decode_opcode(
         input [7:0] data
@@ -329,6 +348,17 @@ module sm83 (
                     end
                 end
                 OP_ADD16: begin
+                    // ADD HL, r16
+                    if (mcycle == 8'd1) begin
+                        {next_flags[FLAG_Z],
+                            next_flags[FLAG_H],
+                            next_flags[FLAG_C],
+                            r16_w_data} = add16(get_r16(R16_HL), get_r16(opcode[5:4]), flags[FLAG_C]);
+                        next_flags[FLAG_N] = 0;
+                        r16_dst = R16_HL;
+                        r16_we = 1;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_LD_IMM8: begin
                 end
