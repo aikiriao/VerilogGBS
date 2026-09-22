@@ -61,14 +61,55 @@ module sm83 (
         input carry
     );
         reg [16:0] sum;
-        /* verilator lint_off UNUSEDSIGNAL */
-        reg [15:0] half_sum;
-        /* verilator lint_on UNUSEDSIGNAL */
 
         begin
             sum = {1'b0, v1} + {1'b0, v2} + carry;
-            half_sum = (v1 & 16'h0FFF) + (v2 & 16'h0FFF) + carry;
-            add16 = { (sum === 0), half_sum[12], sum[15], sum[15:0] };
+            add16 = {
+                (sum[15:0] === 0),
+                ((v1[12] ^ v2[12] ^ sum[12]) !== 0),
+                sum[16],
+                sum[15:0]
+                };
+        end
+    endfunction
+
+    // 8bit加算
+    // 結果をフラグとともに {Z, H, C, result} で返す
+    function automatic [10:0] add8(
+        input [7:0] v1,
+        input [7:0] v2,
+        input carry
+    );
+        reg [8:0] sum;
+
+        begin
+            sum = {1'b0, v1} + {1'b0, v2} + carry;
+            add8 = {
+                (sum[7:0] === 0),
+                ((v1[4] ^ v2[4] ^ sum[4]) !== 0),
+                sum[8],
+                sum[7:0]
+                };
+        end
+    endfunction
+
+    // 8bit減算
+    // 結果をフラグとともに {Z, H, C, result} で返す
+    function automatic [10:0] sub8(
+        input [7:0] v1,
+        input [7:0] v2,
+        input carry
+    );
+        reg [7:0] sub;
+
+        begin
+            sub = v1 - v2 - carry;
+            sub8 = {
+                (sub[7:0] === 0),
+                (((v2 & 8'h0F) + carry) > (v1 & 8'h0F)),
+                ((v2 + carry) > v1),
+                sub[7:0]
+                };
         end
     endfunction
 
@@ -86,6 +127,8 @@ module sm83 (
             8'b00??0011: decode_opcode = OP_INC16;
             8'b00??1011: decode_opcode = OP_DEC16;
             8'b00??1001: decode_opcode = OP_ADD16;
+            8'b00???100: decode_opcode = OP_INC;
+            8'b00???101: decode_opcode = OP_DEC;
             8'b00???110: decode_opcode = OP_LD_IMM8;
             8'b00000111: decode_opcode = OP_RLCA;
             8'b00001111: decode_opcode = OP_RRCA;
@@ -357,6 +400,34 @@ module sm83 (
                         next_flags[FLAG_N] = 0;
                         r16_dst = R16_HL;
                         r16_we = 1;
+                        next_mcycle = 8'd0;
+                    end
+                end
+                OP_INC: begin
+                    // INC r8
+                    if (mcycle == 8'd1) begin
+                        {next_flags[FLAG_Z],
+                            next_flags[FLAG_H],
+                            next_flags[FLAG_C],
+                            r8_w_data} = add8(r8[opcode[5:3]], 8'd1, 0);
+                        next_flags[FLAG_C] = flags[FLAG_C]; // キャリーフラグは変えない
+                        next_flags[FLAG_N] = 0;
+                        r8_dst = opcode[5:3];
+                        r8_we = 1;
+                        next_mcycle = 8'd0;
+                    end
+                end
+                OP_DEC: begin
+                    // DEC r8
+                    if (mcycle == 8'd1) begin
+                        {next_flags[FLAG_Z],
+                            next_flags[FLAG_H],
+                            next_flags[FLAG_C],
+                            r8_w_data} = sub8(r8[opcode[5:3]], 8'd1, 0);
+                        next_flags[FLAG_C] = flags[FLAG_C]; // キャリーフラグは変えない
+                        next_flags[FLAG_N] = 1;
+                        r8_dst = opcode[5:3];
+                        r8_we = 1;
                         next_mcycle = 8'd0;
                     end
                 end

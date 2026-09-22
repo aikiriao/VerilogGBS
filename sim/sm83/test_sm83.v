@@ -485,6 +485,89 @@ module test_sm83;
         end
     endtask
 
+    // INC r8のテスト
+    task automatic sm83_inc_r8_test_sub;
+        input reg [2:0] dst;
+        input reg [7:0] initial_value;
+        input reg expected_zero;
+        input reg expected_half_carry;
+
+        begin
+            sm83_reset();
+            
+            // 命令を生成
+            memory[0] = {2'b00, dst, 3'b100};
+            // レジスタに初期値をセット
+            cpu.r8[dst] = initial_value;
+            
+            repeat (2) @(posedge clk);
+            @(negedge clk);
+            
+            `EXPECT_EQ(cpu.pc, 1);
+            `EXPECT_EQ(cpu.flags[FLAG_N], 0);
+            `EXPECT_EQ(cpu.r8[dst], initial_value + 8'd1);
+            `EXPECT_EQ(cpu.flags[FLAG_Z], expected_zero);
+            `EXPECT_EQ(cpu.flags[FLAG_H], expected_half_carry);
+        end
+    endtask
+
+    // INC r8のテスト
+    task automatic sm83_inc_r8_test;
+        integer r8_dst;
+
+        begin
+            // 境界値付近だけ攻める
+            for (r8_dst = 0; r8_dst < 8; r8_dst = r8_dst + 1) begin
+                if (r8_dst[2:0] !== R8_HL_INDIRECT) begin
+                    sm83_inc_r8_test_sub(r8_dst[2:0], 8'h00, 0, 0);
+                    sm83_inc_r8_test_sub(r8_dst[2:0], 8'hFF, 1, 1);
+                end
+            end
+        end
+    endtask
+
+    // DEC r8のテスト
+    task automatic sm83_dec_r8_test_sub;
+        input reg [2:0] dst;
+        input reg [7:0] initial_value;
+        input reg expected_zero;
+        input reg expected_half_carry;
+
+        begin
+            sm83_reset();
+            
+            // 命令を生成
+            memory[0] = {2'b00, dst, 3'b101};
+            // レジスタに初期値をセット
+            cpu.r8[dst] = initial_value;
+            
+            repeat (2) @(posedge clk);
+            @(negedge clk);
+            
+            `EXPECT_EQ(cpu.pc, 1);
+            `EXPECT_EQ(cpu.flags[FLAG_N], 1);
+            `EXPECT_EQ(cpu.r8[dst], initial_value - 8'd1);
+            `EXPECT_EQ(cpu.flags[FLAG_Z], expected_zero);
+            `EXPECT_EQ(cpu.flags[FLAG_H], expected_half_carry);
+        end
+    endtask
+
+    // DEC r8のテスト
+    task automatic sm83_dec_r8_test;
+        integer r8_dst;
+
+        begin
+            // 境界値付近だけ攻める
+            for (r8_dst = 0; r8_dst < 8; r8_dst = r8_dst + 1) begin
+                if (r8_dst[2:0] !== R8_HL_INDIRECT) begin
+                    sm83_dec_r8_test_sub(r8_dst[2:0], 8'h00, 0, 1);
+                    sm83_dec_r8_test_sub(r8_dst[2:0], 8'h01, 1, 0);
+                    sm83_dec_r8_test_sub(r8_dst[2:0], 8'hFF, 0, 0);
+                end
+            end
+        end
+    endtask
+
     initial begin
         $dumpfile("build/test_sm83.vcd");
         $dumpvars(0, test_sm83);
@@ -498,6 +581,8 @@ module test_sm83;
         sm83_inc_r16_test();
         sm83_dec_r16_test();
         sm83_add16_test();
+        sm83_inc_r8_test();
+        sm83_dec_r8_test();
 
         $finish;
     end
