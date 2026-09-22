@@ -304,6 +304,108 @@ module test_sm83;
         end
     endtask
 
+    // INC r16のテスト
+    task automatic sm83_inc_r16_test_sub;
+        input reg [1:0] dst;
+        input reg [15:0] initial_r16;
+
+        begin
+            sm83_reset();
+            
+            // 命令を生成
+            memory[0] = {2'b00, dst, 4'b0011};
+            
+            case (dst)
+                R16_BC: begin
+                    cpu.r8[R8_B] = initial_r16[15:8];
+                    cpu.r8[R8_C] = initial_r16[7:0];
+                end
+                R16_DE: begin
+                    cpu.r8[R8_D] = initial_r16[15:8];
+                    cpu.r8[R8_E] = initial_r16[7:0];
+                end
+                R16_HL: begin
+                    cpu.r8[R8_H] = initial_r16[15:8];
+                    cpu.r8[R8_L] = initial_r16[7:0];
+                end
+                R16_SP: begin
+                    cpu.sp = initial_r16;
+                end
+            endcase
+            
+            repeat (2) @(posedge clk);
+            @(negedge clk);
+            
+            `EXPECT_EQ(cpu.pc, 1); // PCは次の1を指す
+            `EXPECT_EQ(cpu.get_r16(dst), initial_r16 + 16'd1); // 意図された値が書き込まれているか
+        end
+    endtask
+
+    // INC r16のテスト
+    task automatic sm83_inc_r16_test;
+        integer r16_dst;
+
+        begin
+            // 境界値付近だけ攻める
+            for (r16_dst = 0; r16_dst <= 2'd3; r16_dst = r16_dst + 1) begin
+                sm83_inc_r16_test_sub(r16_dst[1:0], 16'h0000);
+                sm83_inc_r16_test_sub(r16_dst[1:0], 16'h00FF);
+                sm83_inc_r16_test_sub(r16_dst[1:0], 16'hFFFF);
+            end
+        end
+    endtask
+
+    // DEC r16のテスト
+    task automatic sm83_dec_r16_test_sub;
+        input reg [1:0] dst;
+        input reg [15:0] initial_r16;
+
+        begin
+            sm83_reset();
+            
+            // 命令を生成
+            memory[0] = {2'b00, dst, 4'b1011};
+            
+            case (dst)
+                R16_BC: begin
+                    cpu.r8[R8_B] = initial_r16[15:8];
+                    cpu.r8[R8_C] = initial_r16[7:0];
+                end
+                R16_DE: begin
+                    cpu.r8[R8_D] = initial_r16[15:8];
+                    cpu.r8[R8_E] = initial_r16[7:0];
+                end
+                R16_HL: begin
+                    cpu.r8[R8_H] = initial_r16[15:8];
+                    cpu.r8[R8_L] = initial_r16[7:0];
+                end
+                R16_SP: begin
+                    cpu.sp = initial_r16;
+                end
+            endcase
+            
+            repeat (2) @(posedge clk);
+            @(negedge clk);
+            
+            `EXPECT_EQ(cpu.pc, 1); // PCは次の1を指す
+            `EXPECT_EQ(cpu.get_r16(dst), initial_r16 - 16'd1); // 意図された値が書き込まれているか
+        end
+    endtask
+
+    // DEC r16のテスト
+    task automatic sm83_dec_r16_test;
+        integer r16_dst;
+
+        begin
+            // 境界値付近だけ攻める
+            for (r16_dst = 0; r16_dst <= 2'd3; r16_dst = r16_dst + 1) begin
+                sm83_inc_r16_test_sub(r16_dst[1:0], 16'h0000);
+                sm83_inc_r16_test_sub(r16_dst[1:0], 16'h0100);
+                sm83_inc_r16_test_sub(r16_dst[1:0], 16'hFFFF);
+            end
+        end
+    endtask
+
     initial begin
         $dumpfile("build/test_sm83.vcd");
         $dumpvars(0, test_sm83);
@@ -314,6 +416,8 @@ module test_sm83;
         sm83_ld16_imm16_test();
         sm83_ld_a_to_indirect_test();
         sm83_ld_indirect_to_a_test();
+        sm83_inc_r16_test();
+        sm83_dec_r16_test();
 
         $finish;
     end

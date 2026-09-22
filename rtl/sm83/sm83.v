@@ -48,6 +48,7 @@ module sm83 (
             R16_BC: get_r16 = {r8[R8_B], r8[R8_C]};
             R16_DE: get_r16 = {r8[R8_D], r8[R8_E]};
             R16_HL: get_r16 = {r8[R8_H], r8[R8_L]};
+            R16_SP: get_r16 = sp;
             default: get_r16 = 16'd0;
         endcase
     endfunction
@@ -278,11 +279,6 @@ module sm83 (
                         endcase
                         o_we = 1;
                         o_w_data = r8[R8_A];
-                        next_mcycle = 8'd2;
-                    end else if (mcycle == 8'd2) begin
-                        o_address = pc;
-                        o_re = 1;
-                        next_pc = pc + 16'd1;
                         next_mcycle = 8'd0;
                     end
                 end
@@ -311,17 +307,26 @@ module sm83 (
                         r8_dst = R8_A;
                         r8_we = 1;
                         o_re = 1;
-                        next_mcycle = 8'd2;
-                    end else if (mcycle == 8'd2) begin
-                        o_address = pc;
-                        o_re = 1;
-                        next_pc = pc + 16'd1;
                         next_mcycle = 8'd0;
                     end
                 end
                 OP_INC16: begin
+                    // INC r16
+                    if (mcycle == 8'd1) begin
+                        r16_w_data = get_r16(opcode[5:4]) + 16'd1;
+                        r16_dst = opcode[5:4];
+                        r16_we = 1;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_DEC16: begin
+                    // DEC r16
+                    if (mcycle == 8'd1) begin
+                        r16_w_data = get_r16(opcode[5:4]) - 16'd1;
+                        r16_dst = opcode[5:4];
+                        r16_we = 1;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_ADD16: begin
                 end
