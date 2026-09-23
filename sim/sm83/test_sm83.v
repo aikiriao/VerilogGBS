@@ -935,29 +935,31 @@ module test_sm83;
             
             // 命令を生成
             memory[0] = {2'b01, dst, src};
-            if (src === R8_HL_INDIRECT) begin
-                memory[hl] = src_value;
-            end else begin
+
+            if ((src !== R8_HL_INDIRECT) && (dst !== R8_HL_INDIRECT)) begin
                 cpu.r8[src] = src_value;
-            end
-
-            if (src !== R8_H) begin
+                repeat (2) @(posedge clk);
+                @(negedge clk);
+                `EXPECT_EQ(cpu.r8[dst], src_value);
+            end else if ((src === R8_HL_INDIRECT) && (dst !== R8_HL_INDIRECT)) begin
                 cpu.r8[R8_H] = hl[15:8];
-            end
-            if (src !== R8_L) begin
                 cpu.r8[R8_L] = hl[7:0];
-            end
-
-            repeat (2) @(posedge clk);
-            @(negedge clk);
-            
-            $display("src:%d dst:%d", src, dst);
-            if ((src === R8_HL_INDIRECT) && (dst !== R8_HL_INDIRECT)) begin
-                `EXPECT_EQ(cpu.r8[dst], memory[hl]);
-            end else if (dst === R8_HL_INDIRECT) begin
+                memory[hl] = src_value;
+                repeat (2) @(posedge clk);
+                @(negedge clk);
+                `EXPECT_EQ(cpu.r8[dst], src_value);
+            end else if ((src !== R8_HL_INDIRECT) && (dst === R8_HL_INDIRECT)) begin
+                cpu.r8[src] = src_value;
+                // srcに書き込むことでhlが書き変わりうるので再設定
+                hl[15:8] = cpu.r8[R8_H];
+                hl[7:0] = cpu.r8[R8_L];
+                repeat (2) @(posedge clk);
+                @(negedge clk);
                 `EXPECT_EQ(memory[hl], src_value);
             end else begin
-                `EXPECT_EQ(cpu.r8[dst], src_value);
+                `ASSERT_EQ(src, R8_HL_INDIRECT);
+                `ASSERT_EQ(dst, R8_HL_INDIRECT);
+                // このパターンはHALTなのでテストしない
             end
         end
     endtask
@@ -967,7 +969,7 @@ module test_sm83;
         integer src, dst, trial;
         reg [7:0] imm8;
         reg [15:0] imm16;
-        localparam iteration = 1;
+        localparam iteration = 5;
         begin
             for (src = 0; src < 8; src = src + 1) begin
                 for (dst = 0; dst < 8; dst = dst + 1) begin
@@ -987,7 +989,6 @@ module test_sm83;
 
         clk = 0;
 
-        /*
         sm83_nop_test();
         sm83_ld16_imm16_test();
         sm83_ld_a_to_indirect_test();
@@ -1007,7 +1008,6 @@ module test_sm83;
         sm83_ccf_test();
         sm83_jr_nocond_test();
         sm83_jr_test();
-        */
         sm83_ld_test();
 
         $finish;
