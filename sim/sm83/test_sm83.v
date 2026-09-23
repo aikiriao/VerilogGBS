@@ -850,12 +850,144 @@ module test_sm83;
         end
     endtask
 
+    // 無条件JRのテスト
+    task automatic sm83_jr_nocond_test_sub;
+        input reg [15:0] initial_pc;
+        input reg signed [7:0] relative_pc;
+        input reg [15:0] expected_pc;
+
+        begin
+            sm83_reset();
+            
+            // 命令を生成
+            memory[0] = 8'b00011000;
+            memory[1] = relative_pc;
+            cpu.pc = initial_pc;
+
+            repeat (2) @(posedge clk);
+            @(negedge clk);
+            
+            `EXPECT_EQ(cpu.pc, expected_pc);
+        end
+    endtask
+
+    // 無条件JRのテスト
+    task automatic sm83_jr_nocond_test;
+        begin
+            sm83_jr_nocond_test_sub(16'h0000,  0, 16'h0002);
+            sm83_jr_nocond_test_sub(16'h0000,  1, 16'h0003);
+            sm83_jr_nocond_test_sub(16'h0000,  2, 16'h0004);
+            sm83_jr_nocond_test_sub(16'h0000,  3, 16'h0005);
+            sm83_jr_nocond_test_sub(16'h0000, -1, 16'h0001);
+            sm83_jr_nocond_test_sub(16'h0000, -2, 16'h0000);
+            sm83_jr_nocond_test_sub(16'h0000, -3, 16'hFFFF);
+            sm83_jr_nocond_test_sub(16'h0000, -4, 16'hFFFE);
+        end
+    endtask
+
+    // JRのテスト
+    task automatic sm83_jr_test_sub;
+        input reg [1:0] cond;
+        input reg [7:0] flags;
+        input reg [15:0] initial_pc;
+        input reg signed [7:0] relative_pc;
+        input reg [15:0] expected_pc;
+
+        begin
+            sm83_reset();
+            
+            // 命令を生成
+            memory[0] = {3'b001, cond, 3'b000};
+            memory[1] = relative_pc;
+            cpu.pc = initial_pc;
+            cpu.flags = flags;
+
+            repeat (3) @(posedge clk);
+            @(negedge clk);
+            
+            `EXPECT_EQ(cpu.pc, expected_pc);
+        end
+    endtask
+
+    // JRのテスト
+    task automatic sm83_jr_test;
+        begin
+            sm83_jr_test_sub(COND_NZ, 8'h00, 16'h0000, 1, 16'h0004);
+            sm83_jr_test_sub(COND_NZ, 8'h80, 16'h0000, 1, 16'h0003);
+            sm83_jr_test_sub( COND_Z, 8'h00, 16'h0000, 1, 16'h0003);
+            sm83_jr_test_sub( COND_Z, 8'h80, 16'h0000, 1, 16'h0004);
+            sm83_jr_test_sub(COND_NC, 8'h00, 16'h0000, 1, 16'h0004);
+            sm83_jr_test_sub(COND_NC, 8'h10, 16'h0000, 1, 16'h0003);
+            sm83_jr_test_sub( COND_C, 8'h00, 16'h0000, 1, 16'h0003);
+            sm83_jr_test_sub( COND_C, 8'h10, 16'h0000, 1, 16'h0004);
+        end
+    endtask
+
+    // LDのテスト
+    task automatic sm83_ld_test_sub;
+        input reg [2:0] dst;
+        input reg [2:0] src;
+        input reg [7:0] src_value;
+        input reg [15:0] hl;
+
+        begin
+            sm83_reset();
+            
+            // 命令を生成
+            memory[0] = {2'b01, dst, src};
+            if (src === R8_HL_INDIRECT) begin
+                memory[hl] = src_value;
+            end else begin
+                cpu.r8[src] = src_value;
+            end
+
+            if (src !== R8_H) begin
+                cpu.r8[R8_H] = hl[15:8];
+            end
+            if (src !== R8_L) begin
+                cpu.r8[R8_L] = hl[7:0];
+            end
+
+            repeat (2) @(posedge clk);
+            @(negedge clk);
+            
+            $display("src:%d dst:%d", src, dst);
+            if ((src === R8_HL_INDIRECT) && (dst !== R8_HL_INDIRECT)) begin
+                `EXPECT_EQ(cpu.r8[dst], memory[hl]);
+            end else if (dst === R8_HL_INDIRECT) begin
+                `EXPECT_EQ(memory[hl], src_value);
+            end else begin
+                `EXPECT_EQ(cpu.r8[dst], src_value);
+            end
+        end
+    endtask
+
+    // JRのテスト
+    task automatic sm83_ld_test;
+        integer src, dst, trial;
+        reg [7:0] imm8;
+        reg [15:0] imm16;
+        localparam iteration = 1;
+        begin
+            for (src = 0; src < 8; src = src + 1) begin
+                for (dst = 0; dst < 8; dst = dst + 1) begin
+                    for (trial = 0; trial < iteration; trial = trial + 1) begin
+                        random8(imm8);
+                        random16(imm16);
+                        sm83_ld_test_sub(dst[2:0], src[2:0], imm8, imm16); 
+                    end
+                end
+            end
+        end
+    endtask
+
     initial begin
         $dumpfile("build/test_sm83.vcd");
         $dumpvars(0, test_sm83);
 
         clk = 0;
 
+        /*
         sm83_nop_test();
         sm83_ld16_imm16_test();
         sm83_ld_a_to_indirect_test();
@@ -873,6 +1005,10 @@ module test_sm83;
         sm83_cpl_test();
         sm83_scf_test();
         sm83_ccf_test();
+        sm83_jr_nocond_test();
+        sm83_jr_test();
+        */
+        sm83_ld_test();
 
         $finish;
     end

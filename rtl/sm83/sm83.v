@@ -528,12 +528,40 @@ module sm83 (
                     end
                 end
                 OP_JR_NOCOND: begin
+                    // JR emm8
+                    if (mcycle == 8'd1) begin
+                        // 符号拡張して符号付き加算
+                        next_pc = pc + 16'd1 + $signed({{8{i_r_data[7]}}, i_r_data});
+                        o_address = pc;
+                        o_re = 1;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_JR: begin
+                    // JR cc, emm8
+                    if (mcycle == 8'd1) begin
+                        next_tmpr = i_r_data;
+                        next_pc = pc + 16'd1;
+                        o_address = pc;
+                        o_re = 1;
+                        // 条件成立なら次のサイクルへ。未成立なら終了し次の命令へ
+                        case (opcode[4:3]) 
+                            COND_NZ: next_mcycle = (!flags[FLAG_Z]) ? 8'd2 : 8'd0;
+                            COND_Z: next_mcycle = (flags[FLAG_Z]) ? 8'd2 : 8'd0;
+                            COND_NC: next_mcycle = (!flags[FLAG_C]) ? 8'd2 : 8'd0;
+                            COND_C: next_mcycle = (flags[FLAG_C]) ? 8'd2 : 8'd0;
+                        endcase
+                    end else if (mcycle == 8'd2) begin
+                        next_pc = pc + 16'd1 + $signed({{8{tmpr[7]}}, tmpr});
+                        o_address = pc;
+                        o_re = 1;
+                    end
                 end
                 OP_STOP: begin
+                    // TODO: 未実装。何も更新せず止める
                 end
                 OP_HALT: begin
+                    // TODO: 未実装。何も更新せず止める
                 end
                 OP_LD: begin
                     if (mcycle == 8'd1) begin
