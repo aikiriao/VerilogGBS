@@ -432,6 +432,16 @@ module sm83 (
                     end
                 end
                 OP_LD_IMM8: begin
+                    // LD r8, imm8
+                    if (mcycle == 8'd1) begin
+                        o_address = pc;
+                        o_re = 1;
+                        r8_w_data = i_r_data;
+                        r8_dst = opcode[5:3];
+                        r8_we = 1;
+                        next_pc = pc + 16'd1;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_RLCA: begin
                 end

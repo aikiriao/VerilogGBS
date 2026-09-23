@@ -568,6 +568,42 @@ module test_sm83;
         end
     endtask
 
+    // LD r8, imm8のテスト
+    task automatic sm83_ld_r8_imm8_test_sub;
+        input reg [2:0] dst;
+        input reg [7:0] load_value;
+
+        begin
+            sm83_reset();
+            
+            // 命令を生成
+            memory[0] = {2'b00, dst, 3'b110};
+            memory[1] = load_value;
+            
+            repeat (2) @(posedge clk);
+            @(negedge clk);
+            
+            `EXPECT_EQ(cpu.pc, 2);
+            `EXPECT_EQ(cpu.r8[dst], load_value);
+        end
+    endtask
+
+    // LD r8, imm8のテスト
+    task automatic sm83_ld_r8_imm8_test;
+        integer r8_dst;
+
+        begin
+            // 境界値付近だけ攻める
+            for (r8_dst = 0; r8_dst < 8; r8_dst = r8_dst + 1) begin
+                if (r8_dst[2:0] !== R8_HL_INDIRECT) begin
+                    sm83_ld_r8_imm8_test_sub(r8_dst[2:0], 8'h00);
+                    sm83_ld_r8_imm8_test_sub(r8_dst[2:0], 8'h55);
+                    sm83_ld_r8_imm8_test_sub(r8_dst[2:0], 8'hFF);
+                end
+            end
+        end
+    endtask
+
     initial begin
         $dumpfile("build/test_sm83.vcd");
         $dumpvars(0, test_sm83);
@@ -583,6 +619,7 @@ module test_sm83;
         sm83_add16_test();
         sm83_inc_r8_test();
         sm83_dec_r8_test();
+        sm83_ld_r8_imm8_test();
 
         $finish;
     end
