@@ -279,15 +279,15 @@ module sm83 (
 
         // マシンサイクル毎の処理
         if (mcycle == 8'd0) begin
-            // オペコードのフェッチ
-
-            // 次のデータを読みだす
+            // PCにあるデータを読みだす
             o_address = pc;
             o_re = 1;
 
-            // 次状態
+            // オペコードの読み出し・デコード
             next_opcode = i_r_data;
             next_op = decode_opcode(i_r_data);
+
+            // 次状態
             next_pc = pc + 16'd1;
             next_mcycle = 8'd1;
         end else begin
@@ -587,6 +587,17 @@ module sm83 (
                     end
                 end
                 OP_ADD: begin
+                    // ADD r8
+                    if (mcycle == 8'd1) begin
+                        {next_flags[FLAG_Z],
+                            next_flags[FLAG_H],
+                            next_flags[FLAG_C],
+                            r8_w_data} = add8(r8[R8_A], r8[opcode[2:0]], 0);
+                        next_flags[FLAG_N] = 0;
+                        r8_dst = R8_A;
+                        r8_we = 1;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_ADC: begin
                 end
