@@ -444,20 +444,88 @@ module sm83 (
                     end
                 end
                 OP_RLCA: begin
+                    // RLCA
+                    if (mcycle == 8'd1) begin
+                        r8_w_data = (r8[R8_A] << 1) | {7'd0, r8[R8_A][7]};
+                        r8_dst = R8_A;
+                        r8_we = 1;
+                        next_flags[FLAG_Z] = 0;
+                        next_flags[FLAG_N] = 0;
+                        next_flags[FLAG_H] = 0;
+                        next_flags[FLAG_C] = r8[R8_A][7];
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_RRCA: begin
+                    // RRCA
+                    if (mcycle == 8'd1) begin
+                        r8_w_data = (r8[R8_A] >> 1) | {r8[R8_A][0], 7'd0};
+                        r8_dst = R8_A;
+                        r8_we = 1;
+                        next_flags[FLAG_Z] = 0;
+                        next_flags[FLAG_N] = 0;
+                        next_flags[FLAG_H] = 0;
+                        next_flags[FLAG_C] = r8[R8_A][0];
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_RLA: begin
+                    // RLA
+                    if (mcycle == 8'd1) begin
+                        r8_w_data = (r8[R8_A] << 1) | {7'd0, flags[FLAG_C]};
+                        r8_dst = R8_A;
+                        r8_we = 1;
+                        next_flags[FLAG_Z] = 0;
+                        next_flags[FLAG_N] = 0;
+                        next_flags[FLAG_H] = 0;
+                        next_flags[FLAG_C] = r8[R8_A][7];
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_RRA: begin
+                    // RRA
+                    if (mcycle == 8'd1) begin
+                        r8_w_data = (r8[R8_A] >> 1) | {flags[FLAG_C], 7'd0};
+                        r8_dst = R8_A;
+                        r8_we = 1;
+                        next_flags[FLAG_Z] = 0;
+                        next_flags[FLAG_N] = 0;
+                        next_flags[FLAG_H] = 0;
+                        next_flags[FLAG_C] = r8[R8_A][0];
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_DAA: begin
+                    // TODO
                 end
                 OP_CPL: begin
+                    // CPL
+                    if (mcycle == 8'd1) begin
+                        r8_w_data = ~r8[R8_A];
+                        r8_dst = R8_A;
+                        r8_we = 1;
+                        next_flags[FLAG_N] = 1;
+                        next_flags[FLAG_H] = 1;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_SCF: begin
+                    // SCF
+                    if (mcycle == 8'd1) begin
+                        next_flags[FLAG_C] = 1;
+                        next_flags[FLAG_N] = 0;
+                        next_flags[FLAG_H] = 0;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_CCF: begin
+                    // CCF
+                    if (mcycle == 8'd1) begin
+                        next_flags[FLAG_C] = ~flags[FLAG_C];
+                        next_flags[FLAG_N] = 0;
+                        next_flags[FLAG_H] = 0;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_JR_NOCOND: begin
                 end
