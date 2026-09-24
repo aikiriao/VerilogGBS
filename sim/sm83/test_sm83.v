@@ -1155,10 +1155,10 @@ module test_sm83;
                     sm83_sbc_r8_test_sub(8'h00, src[2:0], 8'h00, 1, 0, 1, 1);
                     sm83_sbc_r8_test_sub(8'hFF, src[2:0], 8'hFF, 1, 0, 1, 1);
                 end else begin                                      
-                    // sm83_sbc_r8_test_sub(8'h00, src[2:0], 8'h00, 1, 0, 1, 1);
-                    // sm83_sbc_r8_test_sub(8'h01, src[2:0], 8'h00, 1, 1, 0, 0);
-                    // sm83_sbc_r8_test_sub(8'h0F, src[2:0], 8'h01, 1, 0, 0, 0);
-                    // sm83_sbc_r8_test_sub(8'hFF, src[2:0], 8'h01, 1, 0, 0, 0);
+                    sm83_sbc_r8_test_sub(8'h00, src[2:0], 8'h00, 1, 0, 1, 1);
+                    sm83_sbc_r8_test_sub(8'h01, src[2:0], 8'h00, 1, 1, 0, 0);
+                    sm83_sbc_r8_test_sub(8'h0F, src[2:0], 8'h01, 1, 0, 0, 0);
+                    sm83_sbc_r8_test_sub(8'hFF, src[2:0], 8'h01, 1, 0, 0, 0);
                 end
             end
         end
