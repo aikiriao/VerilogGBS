@@ -991,6 +991,7 @@ module test_sm83;
         input reg expected_zero;
         input reg expected_half_carry;
         input reg expected_carry;
+        reg [15:0] imm16;
 
         begin
             sm83_reset();
@@ -999,8 +1000,13 @@ module test_sm83;
             memory[0] = {5'b10000, src};
             cpu.r8[R8_A] = a_value;
             cpu.r8[src] = src_value;
+            random16(imm16);
             if (src === R8_A) begin
                 `ASSERT_EQ(a_value, src_value);
+            end else if (src === R8_HL_INDIRECT) begin
+                cpu.r8[R8_H] = imm16[15:8];
+                cpu.r8[R8_L] = imm16[7:0];
+                memory[imm16] = src_value;
             end
 
             repeat (2) @(posedge clk);

@@ -567,12 +567,12 @@ module sm83 (
                     if (mcycle == 8'd1) begin
                         if (opcode[5:3] == R8_HL_INDIRECT) begin
                             // LD (HL), r8
-                            o_address = {r8[R8_H], r8[R8_L]};
+                            o_address = get_r16(R16_HL);
                             o_w_data = r8[opcode[2:0]];
                             o_we = 1;
                         end else if (opcode[2:0] == R8_HL_INDIRECT) begin
                             // LD r8, (HL)
-                            o_address = {r8[R8_H], r8[R8_L]};
+                            o_address = get_r16(R16_HL);
                             o_re = 1;
                             r8_w_data = i_r_data;
                             r8_dst = opcode[5:3];
@@ -589,10 +589,19 @@ module sm83 (
                 OP_ADD: begin
                     // ADD r8
                     if (mcycle == 8'd1) begin
-                        {next_flags[FLAG_Z],
-                            next_flags[FLAG_H],
-                            next_flags[FLAG_C],
-                            r8_w_data} = add8(r8[R8_A], r8[opcode[2:0]], 0);
+                        if (opcode[2:0] == R8_HL_INDIRECT) begin
+                            o_address = get_r16(R16_HL);
+                            o_re = 1;
+                            {next_flags[FLAG_Z],
+                                next_flags[FLAG_H],
+                                next_flags[FLAG_C],
+                                r8_w_data} = add8(r8[R8_A], i_r_data, 0);
+                        end else begin
+                            {next_flags[FLAG_Z],
+                                next_flags[FLAG_H],
+                                next_flags[FLAG_C],
+                                r8_w_data} = add8(r8[R8_A], r8[opcode[2:0]], 0);
+                        end
                         next_flags[FLAG_N] = 0;
                         r8_dst = R8_A;
                         r8_we = 1;
