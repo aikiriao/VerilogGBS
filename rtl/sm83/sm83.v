@@ -706,12 +706,81 @@ module sm83 (
                     end
                 end
                 OP_AND: begin
+                    // AND r8
+                    if (mcycle == 8'd1) begin
+                        if (opcode[2:0] == R8_HL_INDIRECT) begin
+                            o_address = get_r16(R16_HL);
+                            o_re = 1;
+                            r8_w_data = a & i_r_data;
+                        end else begin
+                            r8_w_data = a & get_r8(opcode[2:0]);
+                        end
+                        next_flags[FLAG_Z] = (r8_w_data == 0);
+                        next_flags[FLAG_N] = 0;
+                        next_flags[FLAG_H] = 1;
+                        next_flags[FLAG_C] = 0;
+                        r8_dst = R8_A;
+                        r8_we = 1;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_XOR: begin
+                    // XOR r8
+                    if (mcycle == 8'd1) begin
+                        if (opcode[2:0] == R8_HL_INDIRECT) begin
+                            o_address = get_r16(R16_HL);
+                            o_re = 1;
+                            r8_w_data = a ^ i_r_data;
+                        end else begin
+                            r8_w_data = a ^ get_r8(opcode[2:0]);
+                        end
+                        next_flags[FLAG_Z] = (r8_w_data == 0);
+                        next_flags[FLAG_N] = 0;
+                        next_flags[FLAG_H] = 0;
+                        next_flags[FLAG_C] = 0;
+                        r8_dst = R8_A;
+                        r8_we = 1;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_OR: begin
+                    // OR r8
+                    if (mcycle == 8'd1) begin
+                        if (opcode[2:0] == R8_HL_INDIRECT) begin
+                            o_address = get_r16(R16_HL);
+                            o_re = 1;
+                            r8_w_data = a | i_r_data;
+                        end else begin
+                            r8_w_data = a | get_r8(opcode[2:0]);
+                        end
+                        next_flags[FLAG_Z] = (r8_w_data == 0);
+                        next_flags[FLAG_N] = 0;
+                        next_flags[FLAG_H] = 0;
+                        next_flags[FLAG_C] = 0;
+                        r8_dst = R8_A;
+                        r8_we = 1;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_CP: begin
+                    // CP r8 Aを更新しないことを除きSUBと同等
+                    if (mcycle == 8'd1) begin
+                        if (opcode[2:0] == R8_HL_INDIRECT) begin
+                            o_address = get_r16(R16_HL);
+                            o_re = 1;
+                            {next_flags[FLAG_Z],
+                                next_flags[FLAG_H],
+                                next_flags[FLAG_C],
+                                next_tmpr} = sub8(a, i_r_data, 0);
+                        end else begin
+                            {next_flags[FLAG_Z],
+                                next_flags[FLAG_H],
+                                next_flags[FLAG_C],
+                                next_tmpr} = sub8(a, get_r8(opcode[2:0]), 0);
+                        end
+                        next_flags[FLAG_N] = 1;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_ADD_IMM8: begin
                 end

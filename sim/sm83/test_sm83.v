@@ -1164,6 +1164,226 @@ module test_sm83;
         end
     endtask
 
+    // AND r8のテスト
+    task automatic sm83_and_r8_test_sub;
+        input reg [7:0] a_value;
+        input reg [2:0] src;
+        input reg [7:0] src_value;
+        input reg expected_zero;
+        reg [15:0] imm16;
+
+        begin
+            sm83_reset();
+            
+            // 命令を生成
+            memory[0] = {5'b10100, src};
+            cpu.a = a_value;
+            sm83_set_r8(src, src_value);
+            if (src === R8_A) begin
+                `ASSERT_EQ(a_value, src_value);
+            end else if (src === R8_HL_INDIRECT) begin
+                random16(imm16);
+                cpu.h = imm16[15:8];
+                cpu.l = imm16[7:0];
+                memory[imm16] = src_value;
+            end
+
+            repeat (2) @(posedge clk);
+            @(negedge clk);
+
+            `EXPECT_EQ(cpu.pc, 1);
+            `EXPECT_EQ(cpu.a, a_value & src_value);
+            `EXPECT_EQ(cpu.flags[FLAG_Z], expected_zero);
+            `EXPECT_EQ(cpu.flags[FLAG_N], 0);
+            `EXPECT_EQ(cpu.flags[FLAG_H], 1);
+            `EXPECT_EQ(cpu.flags[FLAG_C], 0);
+        end
+    endtask
+
+    // AND r8のテスト
+    task automatic sm83_and_r8_test;
+        integer src;
+        begin
+            for (src = 0; src < 8; src = src + 1) begin
+                if (src[2:0] === R8_A) begin
+                    sm83_and_r8_test_sub(8'h00, src[2:0], 8'h00, 1);
+                    sm83_and_r8_test_sub(8'hFF, src[2:0], 8'hFF, 0);
+                end else begin                                      
+                    sm83_and_r8_test_sub(8'h00, src[2:0], 8'h00, 1);
+                    sm83_and_r8_test_sub(8'hFF, src[2:0], 8'h00, 1);
+                    sm83_and_r8_test_sub(8'h00, src[2:0], 8'hFF, 1);
+                    sm83_and_r8_test_sub(8'hAA, src[2:0], 8'h55, 1);
+                    sm83_and_r8_test_sub(8'hFF, src[2:0], 8'hFF, 0);
+                end
+            end
+        end
+    endtask
+
+    // XOR r8のテスト
+    task automatic sm83_xor_r8_test_sub;
+        input reg [7:0] a_value;
+        input reg [2:0] src;
+        input reg [7:0] src_value;
+        input reg expected_zero;
+        reg [15:0] imm16;
+
+        begin
+            sm83_reset();
+            
+            // 命令を生成
+            memory[0] = {5'b10101, src};
+            cpu.a = a_value;
+            sm83_set_r8(src, src_value);
+            if (src === R8_A) begin
+                `ASSERT_EQ(a_value, src_value);
+            end else if (src === R8_HL_INDIRECT) begin
+                random16(imm16);
+                cpu.h = imm16[15:8];
+                cpu.l = imm16[7:0];
+                memory[imm16] = src_value;
+            end
+
+            repeat (2) @(posedge clk);
+            @(negedge clk);
+
+            `EXPECT_EQ(cpu.pc, 1);
+            `EXPECT_EQ(cpu.a, a_value ^ src_value);
+            `EXPECT_EQ(cpu.flags[FLAG_Z], expected_zero);
+            `EXPECT_EQ(cpu.flags[FLAG_N], 0);
+            `EXPECT_EQ(cpu.flags[FLAG_H], 0);
+            `EXPECT_EQ(cpu.flags[FLAG_C], 0);
+        end
+    endtask
+
+    // XOR r8のテスト
+    task automatic sm83_xor_r8_test;
+        integer src;
+        begin
+            for (src = 0; src < 8; src = src + 1) begin
+                if (src[2:0] === R8_A) begin
+                    sm83_xor_r8_test_sub(8'h00, src[2:0], 8'h00, 1);
+                    sm83_xor_r8_test_sub(8'hFF, src[2:0], 8'hFF, 1);
+                end else begin                                      
+                    sm83_xor_r8_test_sub(8'h00, src[2:0], 8'h00, 1);
+                    sm83_xor_r8_test_sub(8'hFF, src[2:0], 8'h00, 0);
+                    sm83_xor_r8_test_sub(8'h00, src[2:0], 8'hFF, 0);
+                    sm83_xor_r8_test_sub(8'hAA, src[2:0], 8'h55, 0);
+                    sm83_xor_r8_test_sub(8'hFF, src[2:0], 8'hFF, 1);
+                end
+            end
+        end
+    endtask
+
+    // OR r8のテスト
+    task automatic sm83_or_r8_test_sub;
+        input reg [7:0] a_value;
+        input reg [2:0] src;
+        input reg [7:0] src_value;
+        input reg expected_zero;
+        reg [15:0] imm16;
+
+        begin
+            sm83_reset();
+            
+            // 命令を生成
+            memory[0] = {5'b10110, src};
+            cpu.a = a_value;
+            sm83_set_r8(src, src_value);
+            if (src === R8_A) begin
+                `ASSERT_EQ(a_value, src_value);
+            end else if (src === R8_HL_INDIRECT) begin
+                random16(imm16);
+                cpu.h = imm16[15:8];
+                cpu.l = imm16[7:0];
+                memory[imm16] = src_value;
+            end
+
+            repeat (2) @(posedge clk);
+            @(negedge clk);
+
+            `EXPECT_EQ(cpu.pc, 1);
+            `EXPECT_EQ(cpu.a, a_value | src_value);
+            `EXPECT_EQ(cpu.flags[FLAG_Z], expected_zero);
+            `EXPECT_EQ(cpu.flags[FLAG_N], 0);
+            `EXPECT_EQ(cpu.flags[FLAG_H], 0);
+            `EXPECT_EQ(cpu.flags[FLAG_C], 0);
+        end
+    endtask
+
+    // OR r8のテスト
+    task automatic sm83_or_r8_test;
+        integer src;
+        begin
+            for (src = 0; src < 8; src = src + 1) begin
+                if (src[2:0] === R8_A) begin
+                    sm83_or_r8_test_sub(8'h00, src[2:0], 8'h00, 1);
+                    sm83_or_r8_test_sub(8'hFF, src[2:0], 8'hFF, 0);
+                end else begin                                      
+                    sm83_or_r8_test_sub(8'h00, src[2:0], 8'h00, 1);
+                    sm83_or_r8_test_sub(8'hFF, src[2:0], 8'h00, 0);
+                    sm83_or_r8_test_sub(8'h00, src[2:0], 8'hFF, 0);
+                    sm83_or_r8_test_sub(8'hAA, src[2:0], 8'h55, 0);
+                    sm83_or_r8_test_sub(8'hFF, src[2:0], 8'hFF, 0);
+                end
+            end
+        end
+    endtask
+
+    // CP r8のテスト
+    task automatic sm83_cp_r8_test_sub;
+        input reg [7:0] a_value;
+        input reg [2:0] src;
+        input reg [7:0] src_value;
+        input reg expected_zero;
+        input reg expected_half_carry;
+        input reg expected_carry;
+        reg [15:0] imm16;
+
+        begin
+            sm83_reset();
+            
+            // 命令を生成
+            memory[0] = {5'b10111, src};
+            cpu.a = a_value;
+            sm83_set_r8(src, src_value);
+            if (src === R8_A) begin
+                `ASSERT_EQ(a_value, src_value);
+            end else if (src === R8_HL_INDIRECT) begin
+                random16(imm16);
+                cpu.h = imm16[15:8];
+                cpu.l = imm16[7:0];
+                memory[imm16] = src_value;
+            end
+
+            repeat (2) @(posedge clk);
+            @(negedge clk);
+
+            `EXPECT_EQ(cpu.pc, 1);
+            `EXPECT_EQ(cpu.flags[FLAG_Z], expected_zero);
+            `EXPECT_EQ(cpu.flags[FLAG_N], 1);
+            `EXPECT_EQ(cpu.flags[FLAG_H], expected_half_carry);
+            `EXPECT_EQ(cpu.flags[FLAG_C], expected_carry);
+        end
+    endtask
+
+    // CP r8のテスト
+    task automatic sm83_cp_r8_test;
+        integer src;
+        begin
+            for (src = 0; src < 8; src = src + 1) begin
+                if (src[2:0] === R8_A) begin
+                    sm83_cp_r8_test_sub(8'h00, src[2:0], 8'h00, 1, 0, 0);
+                    sm83_cp_r8_test_sub(8'hFF, src[2:0], 8'hFF, 1, 0, 0);
+                end else begin
+                    sm83_cp_r8_test_sub(8'h00, src[2:0], 8'h00, 1, 0, 0);
+                    sm83_cp_r8_test_sub(8'h00, src[2:0], 8'h01, 0, 1, 1);
+                    sm83_cp_r8_test_sub(8'h0F, src[2:0], 8'h01, 0, 0, 0);
+                    sm83_cp_r8_test_sub(8'hFF, src[2:0], 8'h01, 0, 0, 0);
+                end
+            end
+        end
+    endtask
+
     initial begin
         $dumpfile("build/test_sm83.vcd");
         $dumpvars(0, test_sm83);
@@ -1194,6 +1414,10 @@ module test_sm83;
         sm83_adc_r8_test();
         sm83_sub_r8_test();
         sm83_sbc_r8_test();
+        sm83_and_r8_test();
+        sm83_xor_r8_test();
+        sm83_or_r8_test();
+        sm83_cp_r8_test();
 
         $finish;
     end
