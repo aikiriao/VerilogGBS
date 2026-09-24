@@ -14,7 +14,14 @@ module sm83 (
     `include "sm83_defs.vh"
     
     // レジスタ
-    reg [7:0] r8[0:7]; // 8bitレジスタ
+    // 8bitレジスタ
+    reg [7:0] a; 
+    reg [7:0] b;
+    reg [7:0] c;
+    reg [7:0] d;
+    reg [7:0] e;
+    reg [7:0] h;
+    reg [7:0] l;
     reg [7:0] flags; // フラグレジスタ
     reg [15:0] sp; // スタックポインタ
     reg [15:0] pc; // プログラムカウンタ
@@ -40,14 +47,30 @@ module sm83 (
     reg [15:0] next_sp;
     reg [7:0] next_tmpr;
 
+    // 8bitレジスタ値の取得
+    function automatic [7:0] get_r8(
+        input [2:0] r8
+    );
+        case (r8)
+            R8_A: get_r8 = a;
+            R8_B: get_r8 = b;
+            R8_C: get_r8 = c;
+            R8_D: get_r8 = d;
+            R8_E: get_r8 = e;
+            R8_H: get_r8 = h;
+            R8_L: get_r8 = l;
+            default: get_r8 = 8'd0;
+        endcase
+    endfunction
+
     // 16bitレジスタ値の取得
     function automatic [15:0] get_r16(
         input [1:0] r16
     );
         case (r16)
-            R16_BC: get_r16 = {r8[R8_B], r8[R8_C]};
-            R16_DE: get_r16 = {r8[R8_D], r8[R8_E]};
-            R16_HL: get_r16 = {r8[R8_H], r8[R8_L]};
+            R16_BC: get_r16 = {b, c};
+            R16_DE: get_r16 = {d, e};
+            R16_HL: get_r16 = {h, l};
             R16_SP: get_r16 = sp;
             default: get_r16 = 16'd0;
         endcase
@@ -222,14 +245,13 @@ module sm83 (
             op <= OP_NOP;
             opcode <= 8'd0;
             tmpr <= 8'd0;
-            r8[R8_B] <= 8'd0;
-            r8[R8_C] <= 8'd0;
-            r8[R8_D] <= 8'd0;
-            r8[R8_E] <= 8'd0;
-            r8[R8_H] <= 8'd0;
-            r8[R8_L] <= 8'd0;
-            r8[R8_HL_INDIRECT] <= 8'd0; // 使わないが念のため
-            r8[R8_A] <= 8'd0;
+            a <= 8'd0;
+            b <= 8'd0;
+            c <= 8'd0;
+            d <= 8'd0;
+            e <= 8'd0;
+            h <= 8'd0;
+            l <= 8'd0;
         end else begin
             flags <= next_flags;
             sp <= next_sp;
@@ -239,13 +261,22 @@ module sm83 (
             opcode <= next_opcode;
             tmpr <= next_tmpr;
             if (r8_we) begin
-                r8[r8_dst] <= r8_w_data;
+                case (r8_dst)
+                    R8_A: a <= r8_w_data;
+                    R8_B: b <= r8_w_data;
+                    R8_C: c <= r8_w_data;
+                    R8_D: d <= r8_w_data;
+                    R8_E: e <= r8_w_data;
+                    R8_H: h <= r8_w_data;
+                    R8_L: l <= r8_w_data;
+                    default: a <= a; // 何もしない
+                endcase
             end
             if (r16_we) begin
                 case (r16_dst)
-                    R16_BC: {r8[R8_B], r8[R8_C]} <= r16_w_data;
-                    R16_DE: {r8[R8_D], r8[R8_E]} <= r16_w_data;
-                    R16_HL: {r8[R8_H], r8[R8_L]} <= r16_w_data;
+                    R16_BC: {b, c} <= r16_w_data;
+                    R16_DE: {d, e} <= r16_w_data;
+                    R16_HL: {h, l} <= r16_w_data;
                     R16_SP: sp <= r16_w_data;
                 endcase
             end
@@ -340,7 +371,7 @@ module sm83 (
                             end
                         endcase
                         o_we = 1;
-                        o_w_data = r8[R8_A];
+                        o_w_data = a;
                         next_mcycle = 8'd0;
                     end
                 end
@@ -409,7 +440,7 @@ module sm83 (
                         {next_flags[FLAG_Z],
                             next_flags[FLAG_H],
                             next_flags[FLAG_C],
-                            r8_w_data} = add8(r8[opcode[5:3]], 8'd1, 0);
+                            r8_w_data} = add8(get_r8(opcode[5:3]), 8'd1, 0);
                         next_flags[FLAG_C] = flags[FLAG_C]; // キャリーフラグは変えない
                         next_flags[FLAG_N] = 0;
                         r8_dst = opcode[5:3];
@@ -423,7 +454,7 @@ module sm83 (
                         {next_flags[FLAG_Z],
                             next_flags[FLAG_H],
                             next_flags[FLAG_C],
-                            r8_w_data} = sub8(r8[opcode[5:3]], 8'd1, 0);
+                            r8_w_data} = sub8(get_r8(opcode[5:3]), 8'd1, 0);
                         next_flags[FLAG_C] = flags[FLAG_C]; // キャリーフラグは変えない
                         next_flags[FLAG_N] = 1;
                         r8_dst = opcode[5:3];
@@ -446,52 +477,52 @@ module sm83 (
                 OP_RLCA: begin
                     // RLCA
                     if (mcycle == 8'd1) begin
-                        r8_w_data = (r8[R8_A] << 1) | {7'd0, r8[R8_A][7]};
+                        r8_w_data = (a << 1) | {7'd0, a[7]};
                         r8_dst = R8_A;
                         r8_we = 1;
                         next_flags[FLAG_Z] = 0;
                         next_flags[FLAG_N] = 0;
                         next_flags[FLAG_H] = 0;
-                        next_flags[FLAG_C] = r8[R8_A][7];
+                        next_flags[FLAG_C] = a[7];
                         next_mcycle = 8'd0;
                     end
                 end
                 OP_RRCA: begin
                     // RRCA
                     if (mcycle == 8'd1) begin
-                        r8_w_data = (r8[R8_A] >> 1) | {r8[R8_A][0], 7'd0};
+                        r8_w_data = (a >> 1) | {a[0], 7'd0};
                         r8_dst = R8_A;
                         r8_we = 1;
                         next_flags[FLAG_Z] = 0;
                         next_flags[FLAG_N] = 0;
                         next_flags[FLAG_H] = 0;
-                        next_flags[FLAG_C] = r8[R8_A][0];
+                        next_flags[FLAG_C] = a[0];
                         next_mcycle = 8'd0;
                     end
                 end
                 OP_RLA: begin
                     // RLA
                     if (mcycle == 8'd1) begin
-                        r8_w_data = (r8[R8_A] << 1) | {7'd0, flags[FLAG_C]};
+                        r8_w_data = (a << 1) | {7'd0, flags[FLAG_C]};
                         r8_dst = R8_A;
                         r8_we = 1;
                         next_flags[FLAG_Z] = 0;
                         next_flags[FLAG_N] = 0;
                         next_flags[FLAG_H] = 0;
-                        next_flags[FLAG_C] = r8[R8_A][7];
+                        next_flags[FLAG_C] = a[7];
                         next_mcycle = 8'd0;
                     end
                 end
                 OP_RRA: begin
                     // RRA
                     if (mcycle == 8'd1) begin
-                        r8_w_data = (r8[R8_A] >> 1) | {flags[FLAG_C], 7'd0};
+                        r8_w_data = (a >> 1) | {flags[FLAG_C], 7'd0};
                         r8_dst = R8_A;
                         r8_we = 1;
                         next_flags[FLAG_Z] = 0;
                         next_flags[FLAG_N] = 0;
                         next_flags[FLAG_H] = 0;
-                        next_flags[FLAG_C] = r8[R8_A][0];
+                        next_flags[FLAG_C] = a[0];
                         next_mcycle = 8'd0;
                     end
                 end
@@ -501,7 +532,7 @@ module sm83 (
                 OP_CPL: begin
                     // CPL
                     if (mcycle == 8'd1) begin
-                        r8_w_data = ~r8[R8_A];
+                        r8_w_data = ~a;
                         r8_dst = R8_A;
                         r8_we = 1;
                         next_flags[FLAG_N] = 1;
@@ -568,7 +599,7 @@ module sm83 (
                         if (opcode[5:3] == R8_HL_INDIRECT) begin
                             // LD (HL), r8
                             o_address = get_r16(R16_HL);
-                            o_w_data = r8[opcode[2:0]];
+                            o_w_data = get_r8(opcode[2:0]);
                             o_we = 1;
                         end else if (opcode[2:0] == R8_HL_INDIRECT) begin
                             // LD r8, (HL)
@@ -579,7 +610,7 @@ module sm83 (
                             r8_we = 1;
                         end else begin
                             // LD r8, r8
-                            r8_w_data = r8[opcode[2:0]];
+                            r8_w_data = get_r8(opcode[2:0]);
                             r8_dst = opcode[5:3];
                             r8_we = 1;
                         end
@@ -595,12 +626,12 @@ module sm83 (
                             {next_flags[FLAG_Z],
                                 next_flags[FLAG_H],
                                 next_flags[FLAG_C],
-                                r8_w_data} = add8(r8[R8_A], i_r_data, 0);
+                                r8_w_data} = add8(a, i_r_data, 0);
                         end else begin
                             {next_flags[FLAG_Z],
                                 next_flags[FLAG_H],
                                 next_flags[FLAG_C],
-                                r8_w_data} = add8(r8[R8_A], r8[opcode[2:0]], 0);
+                                r8_w_data} = add8(a, get_r8(opcode[2:0]), 0);
                         end
                         next_flags[FLAG_N] = 0;
                         r8_dst = R8_A;

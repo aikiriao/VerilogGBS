@@ -64,6 +64,49 @@ module test_sm83;
         end
     endtask
 
+    // 8bitレジスタへのセット
+    task automatic sm83_set_r8;
+        input reg [2:0] dst;
+        input reg [7:0] value;
+
+        case (dst)
+            R8_A: cpu.a = value;
+            R8_B: cpu.b = value;
+            R8_C: cpu.c = value;
+            R8_D: cpu.d = value;
+            R8_E: cpu.e = value;
+            R8_H: cpu.h = value;
+            R8_L: cpu.l = value;
+            default: cpu.a = cpu.a;
+        endcase
+    endtask
+
+    // 16bitレジスタへのセット
+    task automatic sm83_set_r16;
+        input reg [1:0] dst;
+        input reg [15:0] value;
+
+        case (dst)
+            R16_BC: {cpu.b, cpu.c} = value;
+            R16_DE: {cpu.d, cpu.e} = value;
+            R16_HL: {cpu.h, cpu.l} = value;
+            R16_SP: cpu.sp = value;
+        endcase
+    endtask
+
+    // 16bitメモリレジスタへのセット
+    task automatic sm83_set_r16mem;
+        input reg [1:0] dst;
+        input reg [15:0] value;
+
+        case (dst)
+            R16MEM_BC: {cpu.b, cpu.c} = value;
+            R16MEM_DE: {cpu.d, cpu.e} = value;
+            R16MEM_HL_INC: {cpu.h, cpu.l} = value;
+            R16MEM_HL_DEC: {cpu.h, cpu.l} = value;
+        endcase
+    endtask
+
     // リセットタスク
     task automatic sm83_reset;
         begin
@@ -73,7 +116,13 @@ module test_sm83;
             rst_n = 1;
 
             for (i = 0; i < 8; i = i + 1) begin
-                `ASSERT_EQ(cpu.r8[i], 0);
+                `ASSERT_EQ(cpu.a, 0);
+                `ASSERT_EQ(cpu.b, 0);
+                `ASSERT_EQ(cpu.c, 0);
+                `ASSERT_EQ(cpu.d, 0);
+                `ASSERT_EQ(cpu.e, 0);
+                `ASSERT_EQ(cpu.h, 0);
+                `ASSERT_EQ(cpu.l, 0);
             end
             `ASSERT_EQ(cpu.flags, 0);
             `ASSERT_EQ(cpu.sp, 0);
@@ -106,7 +155,13 @@ module test_sm83;
             @(negedge clk);
 
             for (i = 0; i < 8; i = i + 1) begin
-                `EXPECT_EQ(cpu.r8[i], 0);
+                `EXPECT_EQ(cpu.a, 0);
+                `EXPECT_EQ(cpu.b, 0);
+                `EXPECT_EQ(cpu.c, 0);
+                `EXPECT_EQ(cpu.d, 0);
+                `EXPECT_EQ(cpu.e, 0);
+                `EXPECT_EQ(cpu.h, 0);
+                `EXPECT_EQ(cpu.l, 0);
             end
             `EXPECT_EQ(cpu.flags, 0);
             `EXPECT_EQ(cpu.sp, 0);
@@ -149,23 +204,7 @@ module test_sm83;
                 @(negedge clk);
 
                 `EXPECT_EQ(cpu.pc, 3); // PCは次の3を指す
-                case (dst)
-                    R16_BC: begin
-                        `EXPECT_EQ(cpu.r8[R8_B], imm16[15:8]);
-                        `EXPECT_EQ(cpu.r8[R8_C], imm16[7:0]);
-                    end
-                    R16_DE: begin
-                        `EXPECT_EQ(cpu.r8[R8_D], imm16[15:8]);
-                        `EXPECT_EQ(cpu.r8[R8_E], imm16[7:0]);
-                    end
-                    R16_HL: begin
-                        `EXPECT_EQ(cpu.r8[R8_H], imm16[15:8]);
-                        `EXPECT_EQ(cpu.r8[R8_L], imm16[7:0]);
-                    end
-                    R16_SP: begin
-                        `EXPECT_EQ(cpu.sp, imm16);
-                    end
-                endcase
+                `EXPECT_EQ(cpu.get_r16(dst), imm16);
             end
         end
     endtask
@@ -198,25 +237,8 @@ module test_sm83;
                 // ランダムなアドレスにランダムな値を書き込む
                 random8(imm8);
                 random16(imm16);
-                cpu.r8[R8_A] = imm8; 
-                case (dst)
-                    R16MEM_BC: begin
-                        cpu.r8[R8_B] = imm16[15:8];
-                        cpu.r8[R8_C] = imm16[7:0];
-                    end
-                    R16MEM_DE: begin
-                        cpu.r8[R8_D] = imm16[15:8];
-                        cpu.r8[R8_E] = imm16[7:0];
-                    end
-                    R16MEM_HL_INC: begin
-                        cpu.r8[R8_H] = imm16[15:8];
-                        cpu.r8[R8_L] = imm16[7:0];
-                    end
-                    R16MEM_HL_DEC: begin
-                        cpu.r8[R8_H] = imm16[15:8];
-                        cpu.r8[R8_L] = imm16[7:0];
-                    end
-                endcase
+                cpu.a = imm8; 
+                sm83_set_r16mem(dst, imm16);
 
                 repeat (2) @(posedge clk);
                 @(negedge clk);
@@ -224,9 +246,9 @@ module test_sm83;
                 `EXPECT_EQ(cpu.pc, 1); // PCは次の1を指す
                 `EXPECT_EQ(memory[imm16], imm8); // 意図された値が書き込まれているか
                 if (dst == R16MEM_HL_INC) begin
-                    `EXPECT_EQ({cpu.r8[R8_H], cpu.r8[R8_L]}, imm16 + 16'd1);
+                    `EXPECT_EQ(cpu.get_r16(R16_HL), imm16 + 16'd1);
                 end else if (dst == R16MEM_HL_DEC) begin
-                    `EXPECT_EQ({cpu.r8[R8_H], cpu.r8[R8_L]}, imm16 - 16'd1);
+                    `EXPECT_EQ(cpu.get_r16(R16_HL), imm16 - 16'd1);
                 end
             end
         end
@@ -261,34 +283,17 @@ module test_sm83;
                 random8(imm8);
                 random16(imm16);
                 memory[imm16] = imm8;
-                case (src)
-                    R16MEM_BC: begin
-                        cpu.r8[R8_B] = imm16[15:8];
-                        cpu.r8[R8_C] = imm16[7:0];
-                    end
-                    R16MEM_DE: begin
-                        cpu.r8[R8_D] = imm16[15:8];
-                        cpu.r8[R8_E] = imm16[7:0];
-                    end
-                    R16MEM_HL_INC: begin
-                        cpu.r8[R8_H] = imm16[15:8];
-                        cpu.r8[R8_L] = imm16[7:0];
-                    end
-                    R16MEM_HL_DEC: begin
-                        cpu.r8[R8_H] = imm16[15:8];
-                        cpu.r8[R8_L] = imm16[7:0];
-                    end
-                endcase
+                sm83_set_r16mem(src, imm16);
 
                 repeat (2) @(posedge clk);
                 @(negedge clk);
 
                 `EXPECT_EQ(cpu.pc, 1); // PCは次の1を指す
-                `EXPECT_EQ(cpu.r8[R8_A], imm8); // 意図された値が書き込まれているか
+                `EXPECT_EQ(cpu.a, imm8); // 意図された値が書き込まれているか
                 if (src == R16MEM_HL_INC) begin
-                    `EXPECT_EQ({cpu.r8[R8_H], cpu.r8[R8_L]}, imm16 + 16'd1);
+                    `EXPECT_EQ(cpu.get_r16(R16_HL), imm16 + 16'd1);
                 end else if (src == R16MEM_HL_DEC) begin
-                    `EXPECT_EQ({cpu.r8[R8_H], cpu.r8[R8_L]}, imm16 - 16'd1);
+                    `EXPECT_EQ(cpu.get_r16(R16_HL), imm16 - 16'd1);
                 end
             end
         end
@@ -314,24 +319,7 @@ module test_sm83;
             
             // 命令を生成
             memory[0] = {2'b00, dst, 4'b0011};
-            
-            case (dst)
-                R16_BC: begin
-                    cpu.r8[R8_B] = initial_r16[15:8];
-                    cpu.r8[R8_C] = initial_r16[7:0];
-                end
-                R16_DE: begin
-                    cpu.r8[R8_D] = initial_r16[15:8];
-                    cpu.r8[R8_E] = initial_r16[7:0];
-                end
-                R16_HL: begin
-                    cpu.r8[R8_H] = initial_r16[15:8];
-                    cpu.r8[R8_L] = initial_r16[7:0];
-                end
-                R16_SP: begin
-                    cpu.sp = initial_r16;
-                end
-            endcase
+            sm83_set_r16(dst, initial_r16);
             
             repeat (2) @(posedge clk);
             @(negedge clk);
@@ -365,24 +353,7 @@ module test_sm83;
             
             // 命令を生成
             memory[0] = {2'b00, dst, 4'b1011};
-            
-            case (dst)
-                R16_BC: begin
-                    cpu.r8[R8_B] = initial_r16[15:8];
-                    cpu.r8[R8_C] = initial_r16[7:0];
-                end
-                R16_DE: begin
-                    cpu.r8[R8_D] = initial_r16[15:8];
-                    cpu.r8[R8_E] = initial_r16[7:0];
-                end
-                R16_HL: begin
-                    cpu.r8[R8_H] = initial_r16[15:8];
-                    cpu.r8[R8_L] = initial_r16[7:0];
-                end
-                R16_SP: begin
-                    cpu.sp = initial_r16;
-                end
-            endcase
+            sm83_set_r16(dst, initial_r16);
             
             repeat (2) @(posedge clk);
             @(negedge clk);
@@ -421,29 +392,11 @@ module test_sm83;
             
             // 命令を生成
             memory[0] = {2'b00, src, 4'b1001};
-            
-            case (src)
-                R16_BC: begin
-                    cpu.r8[R8_B] = src_v[15:8];
-                    cpu.r8[R8_C] = src_v[7:0];
-                end
-                R16_DE: begin
-                    cpu.r8[R8_D] = src_v[15:8];
-                    cpu.r8[R8_E] = src_v[7:0];
-                end
-                R16_HL: begin
-                    `ASSERT_EQ(src_v, hl_v);
-                    cpu.r8[R8_H] = src_v[15:8];
-                    cpu.r8[R8_L] = src_v[7:0];
-                end
-                R16_SP: begin
-                    cpu.sp = src_v;
-                end
-            endcase
+            sm83_set_r16(src, src_v); 
 
             // HLレジスタ・キャリーフラグのセット
-            cpu.r8[R8_H] = hl_v[15:8];
-            cpu.r8[R8_L] = hl_v[7:0];
+            cpu.h = hl_v[15:8];
+            cpu.l = hl_v[7:0];
             cpu.flags[FLAG_C] = carry;
             
             repeat (2) @(posedge clk);
@@ -498,14 +451,14 @@ module test_sm83;
             // 命令を生成
             memory[0] = {2'b00, dst, 3'b100};
             // レジスタに初期値をセット
-            cpu.r8[dst] = initial_value;
+            sm83_set_r8(dst, initial_value);
             
             repeat (2) @(posedge clk);
             @(negedge clk);
             
             `EXPECT_EQ(cpu.pc, 1);
             `EXPECT_EQ(cpu.flags[FLAG_N], 0);
-            `EXPECT_EQ(cpu.r8[dst], initial_value + 8'd1);
+            `EXPECT_EQ(cpu.get_r8(dst), initial_value + 8'd1);
             `EXPECT_EQ(cpu.flags[FLAG_Z], expected_zero);
             `EXPECT_EQ(cpu.flags[FLAG_H], expected_half_carry);
         end
@@ -539,14 +492,14 @@ module test_sm83;
             // 命令を生成
             memory[0] = {2'b00, dst, 3'b101};
             // レジスタに初期値をセット
-            cpu.r8[dst] = initial_value;
+            sm83_set_r8(dst, initial_value);
             
             repeat (2) @(posedge clk);
             @(negedge clk);
             
             `EXPECT_EQ(cpu.pc, 1);
             `EXPECT_EQ(cpu.flags[FLAG_N], 1);
-            `EXPECT_EQ(cpu.r8[dst], initial_value - 8'd1);
+            `EXPECT_EQ(cpu.get_r8(dst), initial_value - 8'd1);
             `EXPECT_EQ(cpu.flags[FLAG_Z], expected_zero);
             `EXPECT_EQ(cpu.flags[FLAG_H], expected_half_carry);
         end
@@ -584,7 +537,7 @@ module test_sm83;
             @(negedge clk);
             
             `EXPECT_EQ(cpu.pc, 2);
-            `EXPECT_EQ(cpu.r8[dst], load_value);
+            `EXPECT_EQ(cpu.get_r8(dst), load_value);
         end
     endtask
 
@@ -616,14 +569,14 @@ module test_sm83;
             
             // 命令を生成
             memory[0] = 8'b00000111;
-            cpu.r8[R8_A] = initial_value;
+            cpu.a = initial_value;
             cpu.flags[FLAG_C] = initial_carry;
             
             repeat (2) @(posedge clk);
             @(negedge clk);
             
             `EXPECT_EQ(cpu.pc, 1);
-            `EXPECT_EQ(cpu.r8[R8_A], expected_value);
+            `EXPECT_EQ(cpu.a, expected_value);
             `EXPECT_EQ(cpu.flags[FLAG_C], expected_carry);
             `EXPECT_EQ(cpu.flags[FLAG_Z], 0);
             `EXPECT_EQ(cpu.flags[FLAG_N], 0);
@@ -653,14 +606,14 @@ module test_sm83;
             
             // 命令を生成
             memory[0] = 8'b00001111;
-            cpu.r8[R8_A] = initial_value;
+            cpu.a = initial_value;
             cpu.flags[FLAG_C] = initial_carry;
             
             repeat (2) @(posedge clk);
             @(negedge clk);
             
             `EXPECT_EQ(cpu.pc, 1);
-            `EXPECT_EQ(cpu.r8[R8_A], expected_value);
+            `EXPECT_EQ(cpu.a, expected_value);
             `EXPECT_EQ(cpu.flags[FLAG_C], expected_carry);
             `EXPECT_EQ(cpu.flags[FLAG_Z], 0);
             `EXPECT_EQ(cpu.flags[FLAG_N], 0);
@@ -690,14 +643,14 @@ module test_sm83;
             
             // 命令を生成
             memory[0] = 8'b00010111;
-            cpu.r8[R8_A] = initial_value;
+            cpu.a = initial_value;
             cpu.flags[FLAG_C] = initial_carry;
             
             repeat (2) @(posedge clk);
             @(negedge clk);
             
             `EXPECT_EQ(cpu.pc, 1);
-            `EXPECT_EQ(cpu.r8[R8_A], expected_value);
+            `EXPECT_EQ(cpu.a, expected_value);
             `EXPECT_EQ(cpu.flags[FLAG_C], expected_carry);
             `EXPECT_EQ(cpu.flags[FLAG_Z], 0);
             `EXPECT_EQ(cpu.flags[FLAG_N], 0);
@@ -731,14 +684,14 @@ module test_sm83;
             
             // 命令を生成
             memory[0] = 8'b00011111;
-            cpu.r8[R8_A] = initial_value;
+            cpu.a = initial_value;
             cpu.flags[FLAG_C] = initial_carry;
             
             repeat (2) @(posedge clk);
             @(negedge clk);
             
             `EXPECT_EQ(cpu.pc, 1);
-            `EXPECT_EQ(cpu.r8[R8_A], expected_value);
+            `EXPECT_EQ(cpu.a, expected_value);
             `EXPECT_EQ(cpu.flags[FLAG_C], expected_carry);
             `EXPECT_EQ(cpu.flags[FLAG_Z], 0);
             `EXPECT_EQ(cpu.flags[FLAG_N], 0);
@@ -770,13 +723,13 @@ module test_sm83;
             
             // 命令を生成
             memory[0] = 8'b00101111;
-            cpu.r8[R8_A] = initial_value;
+            cpu.a = initial_value;
             
             repeat (2) @(posedge clk);
             @(negedge clk);
             
             `EXPECT_EQ(cpu.pc, 1);
-            `EXPECT_EQ(cpu.r8[R8_A], expected_value);
+            `EXPECT_EQ(cpu.a, expected_value);
             `EXPECT_EQ(cpu.flags[FLAG_N], 1);
             `EXPECT_EQ(cpu.flags[FLAG_H], 1);
         end
@@ -937,22 +890,22 @@ module test_sm83;
             memory[0] = {2'b01, dst, src};
 
             if ((src !== R8_HL_INDIRECT) && (dst !== R8_HL_INDIRECT)) begin
-                cpu.r8[src] = src_value;
+                sm83_set_r8(src, src_value);
                 repeat (2) @(posedge clk);
                 @(negedge clk);
-                `EXPECT_EQ(cpu.r8[dst], src_value);
+                `EXPECT_EQ(cpu.get_r8(dst), src_value);
             end else if ((src === R8_HL_INDIRECT) && (dst !== R8_HL_INDIRECT)) begin
-                cpu.r8[R8_H] = hl[15:8];
-                cpu.r8[R8_L] = hl[7:0];
+                cpu.h = hl[15:8];
+                cpu.l = hl[7:0];
                 memory[hl] = src_value;
                 repeat (2) @(posedge clk);
                 @(negedge clk);
-                `EXPECT_EQ(cpu.r8[dst], src_value);
+                `EXPECT_EQ(cpu.get_r8(dst), src_value);
             end else if ((src !== R8_HL_INDIRECT) && (dst === R8_HL_INDIRECT)) begin
-                cpu.r8[src] = src_value;
+                sm83_set_r8(src, src_value);
                 // srcに書き込むことでhlが書き変わりうるので再設定
-                hl[15:8] = cpu.r8[R8_H];
-                hl[7:0] = cpu.r8[R8_L];
+                hl[15:8] = cpu.h;
+                hl[7:0] = cpu.l;
                 repeat (2) @(posedge clk);
                 @(negedge clk);
                 `EXPECT_EQ(memory[hl], src_value);
@@ -998,14 +951,14 @@ module test_sm83;
             
             // 命令を生成
             memory[0] = {5'b10000, src};
-            cpu.r8[R8_A] = a_value;
-            cpu.r8[src] = src_value;
+            cpu.a = a_value;
+            sm83_set_r8(src, src_value);
             random16(imm16);
             if (src === R8_A) begin
                 `ASSERT_EQ(a_value, src_value);
             end else if (src === R8_HL_INDIRECT) begin
-                cpu.r8[R8_H] = imm16[15:8];
-                cpu.r8[R8_L] = imm16[7:0];
+                cpu.h = imm16[15:8];
+                cpu.l = imm16[7:0];
                 memory[imm16] = src_value;
             end
 
@@ -1013,7 +966,7 @@ module test_sm83;
             @(negedge clk);
 
             `EXPECT_EQ(cpu.pc, 1);
-            `EXPECT_EQ(cpu.r8[R8_A], a_value + src_value);
+            `EXPECT_EQ(cpu.a, a_value + src_value);
             `EXPECT_EQ(cpu.flags[FLAG_Z], expected_zero);
             `EXPECT_EQ(cpu.flags[FLAG_N], 0);
             `EXPECT_EQ(cpu.flags[FLAG_H], expected_half_carry);
