@@ -783,20 +783,132 @@ module sm83 (
                     end
                 end
                 OP_ADD_IMM8: begin
+                    // ADD imm8
+                    if (mcycle == 8'd1) begin
+                        o_address = pc;
+                        o_re = 1;
+                        {next_flags[FLAG_Z],
+                            next_flags[FLAG_H],
+                            next_flags[FLAG_C],
+                            r8_w_data} = add8(a, i_r_data, 0);
+                        next_flags[FLAG_N] = 0;
+                        r8_dst = R8_A;
+                        r8_we = 1;
+                        next_pc = pc + 16'd1;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_ADC_IMM8: begin
+                    // ADC imm8
+                    if (mcycle == 8'd1) begin
+                        o_address = pc;
+                        o_re = 1;
+                        {next_flags[FLAG_Z],
+                            next_flags[FLAG_H],
+                            next_flags[FLAG_C],
+                            r8_w_data} = add8(a, i_r_data, flags[FLAG_C]);
+                        next_flags[FLAG_N] = 0;
+                        r8_dst = R8_A;
+                        r8_we = 1;
+                        next_pc = pc + 16'd1;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_SUB_IMM8: begin
+                    // SUB imm8
+                    if (mcycle == 8'd1) begin
+                        o_address = pc;
+                        o_re = 1;
+                        {next_flags[FLAG_Z],
+                            next_flags[FLAG_H],
+                            next_flags[FLAG_C],
+                            r8_w_data} = sub8(a, i_r_data, 0);
+                        next_flags[FLAG_N] = 1;
+                        r8_dst = R8_A;
+                        r8_we = 1;
+                        next_pc = pc + 16'd1;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_SBC_IMM8: begin
+                    // SBC imm8
+                    if (mcycle == 8'd1) begin
+                        o_address = pc;
+                        o_re = 1;
+                        {next_flags[FLAG_Z],
+                            next_flags[FLAG_H],
+                            next_flags[FLAG_C],
+                            r8_w_data} = sub8(a, i_r_data, flags[FLAG_C]);
+                        next_flags[FLAG_N] = 1;
+                        r8_dst = R8_A;
+                        r8_we = 1;
+                        next_pc = pc + 16'd1;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_AND_IMM8: begin
+                    // AND imm8
+                    if (mcycle == 8'd1) begin
+                        o_address = pc;
+                        o_re = 1;
+                        r8_w_data = a & i_r_data;
+                        next_flags[FLAG_Z] = (r8_w_data == 0);
+                        next_flags[FLAG_N] = 0;
+                        next_flags[FLAG_H] = 1;
+                        next_flags[FLAG_C] = 0;
+                        r8_dst = R8_A;
+                        r8_we = 1;
+                        next_pc = pc + 16'd1;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_XOR_IMM8: begin
+                    // XOR imm8
+                    if (mcycle == 8'd1) begin
+                        o_address = pc;
+                        o_re = 1;
+                        r8_w_data = a ^ i_r_data;
+                        next_flags[FLAG_Z] = (r8_w_data == 0);
+                        next_flags[FLAG_N] = 0;
+                        next_flags[FLAG_H] = 0;
+                        next_flags[FLAG_C] = 0;
+                        r8_dst = R8_A;
+                        r8_we = 1;
+                        next_pc = pc + 16'd1;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_OR_IMM8: begin
+                    // OR imm8
+                    if (mcycle == 8'd1) begin
+                        o_address = pc;
+                        o_re = 1;
+                        r8_w_data = a | i_r_data;
+                        next_flags[FLAG_Z] = (r8_w_data == 0);
+                        next_flags[FLAG_N] = 0;
+                        next_flags[FLAG_H] = 0;
+                        next_flags[FLAG_C] = 0;
+                        r8_dst = R8_A;
+                        r8_we = 1;
+                        next_pc = pc + 16'd1;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_CP_IMM8: begin
+                    // CP imm8
+                    if (mcycle == 8'd1) begin
+                        o_address = pc;
+                        o_re = 1;
+                        {next_flags[FLAG_Z],
+                            next_flags[FLAG_H],
+                            next_flags[FLAG_C],
+                            r8_w_data} = sub8(a, i_r_data, 0);
+                        next_flags[FLAG_N] = 1;
+                        r8_dst = R8_A;
+                        r8_we = 1;
+                        next_pc = pc + 16'd1;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_RET_COND: begin
                 end
