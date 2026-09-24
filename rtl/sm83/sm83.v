@@ -130,7 +130,7 @@ module sm83 (
             sub8 = {
                 (sub[7:0] === 0),
                 (((v2 & 8'h0F) + carry) > (v1 & 8'h0F)),
-                ((v2 + carry) > v1),
+                (({1'b0, v2} + carry) > {1'b0, v1}),
                 sub[7:0]
                 };
         end
@@ -640,10 +640,70 @@ module sm83 (
                     end
                 end
                 OP_ADC: begin
+                    // ADC r8
+                    if (mcycle == 8'd1) begin
+                        if (opcode[2:0] == R8_HL_INDIRECT) begin
+                            o_address = get_r16(R16_HL);
+                            o_re = 1;
+                            {next_flags[FLAG_Z],
+                                next_flags[FLAG_H],
+                                next_flags[FLAG_C],
+                                r8_w_data} = add8(a, i_r_data, flags[FLAG_C]);
+                        end else begin
+                            {next_flags[FLAG_Z],
+                                next_flags[FLAG_H],
+                                next_flags[FLAG_C],
+                                r8_w_data} = add8(a, get_r8(opcode[2:0]), flags[FLAG_C]);
+                        end
+                        next_flags[FLAG_N] = 0;
+                        r8_dst = R8_A;
+                        r8_we = 1;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_SUB: begin
+                    // SUB r8
+                    if (mcycle == 8'd1) begin
+                        if (opcode[2:0] == R8_HL_INDIRECT) begin
+                            o_address = get_r16(R16_HL);
+                            o_re = 1;
+                            {next_flags[FLAG_Z],
+                                next_flags[FLAG_H],
+                                next_flags[FLAG_C],
+                                r8_w_data} = sub8(a, i_r_data, 0);
+                        end else begin
+                            {next_flags[FLAG_Z],
+                                next_flags[FLAG_H],
+                                next_flags[FLAG_C],
+                                r8_w_data} = sub8(a, get_r8(opcode[2:0]), 0);
+                        end
+                        next_flags[FLAG_N] = 1;
+                        r8_dst = R8_A;
+                        r8_we = 1;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_SBC: begin
+                    // SBC r8
+                    if (mcycle == 8'd1) begin
+                        if (opcode[2:0] == R8_HL_INDIRECT) begin
+                            o_address = get_r16(R16_HL);
+                            o_re = 1;
+                            {next_flags[FLAG_Z],
+                                next_flags[FLAG_H],
+                                next_flags[FLAG_C],
+                                r8_w_data} = sub8(a, i_r_data, flags[FLAG_C]);
+                        end else begin
+                            {next_flags[FLAG_Z],
+                                next_flags[FLAG_H],
+                                next_flags[FLAG_C],
+                                r8_w_data} = sub8(a, get_r8(opcode[2:0]), flags[FLAG_C]);
+                        end
+                        next_flags[FLAG_N] = 1;
+                        r8_dst = R8_A;
+                        r8_we = 1;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_AND: begin
                 end
