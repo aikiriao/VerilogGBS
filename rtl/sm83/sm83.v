@@ -494,7 +494,7 @@ module sm83 (
                 OP_RLCA: begin
                     // RLCA
                     if (mcycle == 8'd1) begin
-                        r8_w_data = (a << 1) | {7'd0, a[7]};
+                        r8_w_data = {a[6:0], a[7]};
                         r8_dst = R8_A;
                         r8_we = 1;
                         next_flags[FLAG_Z] = 0;
@@ -507,7 +507,7 @@ module sm83 (
                 OP_RRCA: begin
                     // RRCA
                     if (mcycle == 8'd1) begin
-                        r8_w_data = (a >> 1) | {a[0], 7'd0};
+                        r8_w_data = {a[0], a[7:1]};
                         r8_dst = R8_A;
                         r8_we = 1;
                         next_flags[FLAG_Z] = 0;
@@ -520,7 +520,7 @@ module sm83 (
                 OP_RLA: begin
                     // RLA
                     if (mcycle == 8'd1) begin
-                        r8_w_data = (a << 1) | {7'd0, flags[FLAG_C]};
+                        r8_w_data = {a[6:0], flags[FLAG_C]};
                         r8_dst = R8_A;
                         r8_we = 1;
                         next_flags[FLAG_Z] = 0;
@@ -533,7 +533,7 @@ module sm83 (
                 OP_RRA: begin
                     // RRA
                     if (mcycle == 8'd1) begin
-                        r8_w_data = (a >> 1) | {flags[FLAG_C], 7'd0};
+                        r8_w_data = {flags[FLAG_C], a[7:1]};
                         r8_dst = R8_A;
                         r8_we = 1;
                         next_flags[FLAG_Z] = 0;
