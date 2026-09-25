@@ -14,17 +14,17 @@ module sm83 (
     `include "sm83_defs.vh"
     
     // レジスタ
-    // 8bitレジスタ
-    reg [7:0] a; 
-    reg [7:0] b;
-    reg [7:0] c;
-    reg [7:0] d;
-    reg [7:0] e;
-    reg [7:0] h;
-    reg [7:0] l;
+    reg [7:0] a; // 8bitレジスタ
+    reg [7:0] b; // 8bitレジスタ
+    reg [7:0] c; // 8bitレジスタ
+    reg [7:0] d; // 8bitレジスタ
+    reg [7:0] e; // 8bitレジスタ
+    reg [7:0] h; // 8bitレジスタ
+    reg [7:0] l; // 8bitレジスタ
     reg [7:0] flags; // フラグレジスタ
     reg [15:0] sp; // スタックポインタ
     reg [15:0] pc; // プログラムカウンタ
+    reg ime; // 割り込みイネーブル
     // 内部状態
     reg [7:0] mcycle; // マシンサイクル
     reg [7:0] opcode; // オペコード
@@ -46,6 +46,7 @@ module sm83 (
     reg [7:0] next_flags;
     reg [15:0] next_sp;
     reg [7:0] next_tmpr;
+    reg next_ime;
 
     // 8bitレジスタ値の取得
     function automatic [7:0] get_r8(
@@ -245,6 +246,7 @@ module sm83 (
             op <= OP_NOP;
             opcode <= 8'd0;
             tmpr <= 8'd0;
+            ime <= 1'b0;
             a <= 8'd0;
             b <= 8'd0;
             c <= 8'd0;
@@ -260,6 +262,7 @@ module sm83 (
             op <= next_op;
             opcode <= next_opcode;
             tmpr <= next_tmpr;
+            ime <= next_ime;
             if (r8_we) begin
                 case (r8_dst)
                     R8_A: a <= r8_w_data;
@@ -283,7 +286,7 @@ module sm83 (
         end
     end
 
-    // 次状態の決定処理
+    // 次状態の決定論理
     always @(*) begin
         // 状態は基本的に保持
         next_flags = flags;
@@ -293,6 +296,7 @@ module sm83 (
         next_opcode = opcode;
         next_op = op;
         next_tmpr = tmpr;
+        next_ime = ime;
 
         // バスは基本的に何もしない
         o_address = 16'h0000;
@@ -948,6 +952,20 @@ module sm83 (
                     end
                 end
                 OP_RETI: begin
+                    if (mcycle == 8'd1) begin
+                        o_address = sp;
+                        o_re = 1;
+                        next_tmpr = i_r_data;
+                        next_sp = sp + 16'd1;
+                        next_mcycle = 8'd2;
+                    end else if (mcycle == 8'd2) begin
+                        o_address = sp;
+                        o_re = 1;
+                        next_pc = {i_r_data, tmpr};
+                        next_sp = sp + 16'd1;
+                        next_ime = 1;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_JP_COND: begin
                 end
