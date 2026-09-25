@@ -909,8 +909,43 @@ module sm83 (
                     end
                 end
                 OP_RET_COND: begin
+                    // RET cc
+                    if (mcycle == 8'd1) begin
+                        // 条件成立なら次のサイクルへ。未成立なら終了し次の命令へ
+                        case (opcode[4:3]) 
+                            COND_NZ: next_mcycle = (!flags[FLAG_Z]) ? 8'd2 : 8'd0;
+                            COND_Z: next_mcycle = (flags[FLAG_Z]) ? 8'd2 : 8'd0;
+                            COND_NC: next_mcycle = (!flags[FLAG_C]) ? 8'd2 : 8'd0;
+                            COND_C: next_mcycle = (flags[FLAG_C]) ? 8'd2 : 8'd0;
+                        endcase
+                    end else if (mcycle == 8'd2) begin
+                        o_address = sp;
+                        o_re = 1;
+                        next_tmpr = i_r_data;
+                        next_sp = sp + 16'd1;
+                        next_mcycle = 8'd3;
+                    end else if (mcycle == 8'd3) begin
+                        o_address = sp;
+                        o_re = 1;
+                        next_pc = {i_r_data, tmpr};
+                        next_sp = sp + 16'd1;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_RET: begin
+                    if (mcycle == 8'd1) begin
+                        o_address = sp;
+                        o_re = 1;
+                        next_tmpr = i_r_data;
+                        next_sp = sp + 16'd1;
+                        next_mcycle = 8'd2;
+                    end else if (mcycle == 8'd2) begin
+                        o_address = sp;
+                        o_re = 1;
+                        next_pc = {i_r_data, tmpr};
+                        next_sp = sp + 16'd1;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_RETI: begin
                 end

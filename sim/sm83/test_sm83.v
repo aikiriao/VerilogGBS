@@ -1688,6 +1688,98 @@ module test_sm83;
         end
     endtask
 
+    // RET ccのテスト
+    task automatic sm83_ret_cond_test_sub;
+        input reg [1:0] cc;
+        input reg flag;
+        reg [15:0] ret_address;
+        reg [15:0] initial_sp;
+
+        begin
+            sm83_reset();
+            
+            random16(ret_address);
+            random16(initial_sp);
+
+            // 命令を生成
+            memory[0] = {3'b110, cc, 3'b000};
+            memory[initial_sp] = ret_address[7:0];
+            memory[initial_sp + 1] = ret_address[15:8];
+            cpu.sp = initial_sp;
+
+            case (cc) 
+                COND_NZ: cpu.flags[FLAG_Z] = ~flag;
+                COND_Z: cpu.flags[FLAG_Z] = flag;
+                COND_NC: cpu.flags[FLAG_C] = ~flag;
+                COND_C: cpu.flags[FLAG_C] = flag;
+            endcase
+
+            if (flag) begin
+                repeat (4) @(posedge clk);
+                @(negedge clk);
+
+                `EXPECT_EQ(cpu.pc, ret_address);
+                `EXPECT_EQ(cpu.sp, initial_sp + 2);
+            end else begin
+                repeat (2) @(posedge clk);
+                @(negedge clk);
+
+                `EXPECT_EQ(cpu.pc, 1);
+                `EXPECT_EQ(cpu.sp, initial_sp);
+            end
+        end
+    endtask
+
+    // RETのテスト
+    task automatic sm83_ret_cond_test;
+        integer c, t;
+        localparam iteration = 10;
+        begin
+            for (c = 0; c < 4; c = c + 1) begin
+                for (t = 0; t < iteration; t = t + 1) begin
+                    sm83_ret_cond_test_sub(c[1:0], 0);
+                    sm83_ret_cond_test_sub(c[1:0], 1);
+                end
+            end
+        end
+    endtask
+
+    // RETのテスト
+    task automatic sm83_ret_test_sub;
+        reg [15:0] ret_address;
+        reg [15:0] initial_sp;
+
+        begin
+            sm83_reset();
+            
+            random16(ret_address);
+            random16(initial_sp);
+
+            // 命令を生成
+            memory[0] = 8'b11001001;
+            memory[initial_sp] = ret_address[7:0];
+            memory[initial_sp + 1] = ret_address[15:8];
+            cpu.sp = initial_sp;
+
+            repeat (3) @(posedge clk);
+            @(negedge clk);
+
+            `EXPECT_EQ(cpu.pc, ret_address);
+            `EXPECT_EQ(cpu.sp, initial_sp + 2);
+        end
+    endtask
+
+    // RETのテスト
+    task automatic sm83_ret_test;
+        integer t;
+        localparam iteration = 10;
+        begin
+            for (t = 0; t < iteration; t = t + 1) begin
+                sm83_ret_test_sub();
+            end
+        end
+    endtask
+
     initial begin
         $dumpfile("build/test_sm83.vcd");
         $dumpvars(0, test_sm83);
@@ -1730,6 +1822,8 @@ module test_sm83;
         sm83_xor_imm8_test();
         sm83_or_imm8_test();
         sm83_cp_imm8_test();
+        sm83_ret_cond_test();
+        sm83_ret_test();
 
         $finish;
     end
