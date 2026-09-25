@@ -2430,6 +2430,190 @@ module test_sm83;
         end
     endtask
 
+    // RLCのテスト
+    task automatic sm83_rlc_test_sub;
+        input reg [2:0] dst;
+        input reg [7:0] initial_value;
+        input reg initial_carry;
+        input reg [7:0] expected_value;
+        input reg expected_carry;
+
+        begin
+            sm83_reset();
+            
+            // 命令を生成
+            memory[0] = 8'b11001011; // PREFIX
+            memory[1] = {5'b00000, dst};
+            sm83_set_r8(dst, initial_value);
+            cpu.flags[FLAG_C] = initial_carry;
+            
+            repeat (3) @(posedge clk);
+            @(negedge clk);
+            
+            `EXPECT_EQ(cpu.pc, 2);
+            `EXPECT_EQ(cpu.get_r8(dst), expected_value);
+            `EXPECT_EQ(cpu.flags[FLAG_C], expected_carry);
+            `EXPECT_EQ(cpu.flags[FLAG_Z], expected_value === 0);
+            `EXPECT_EQ(cpu.flags[FLAG_N], 0);
+            `EXPECT_EQ(cpu.flags[FLAG_H], 0);
+        end
+    endtask
+
+    // RLCのテスト
+    task automatic sm83_rlc_test;
+        integer dst;
+        begin
+            for (dst = 0; dst < 8; dst = dst + 1) begin
+                if (dst[2:0] !== R8_HL_INDIRECT) begin
+                    sm83_rlc_test_sub(dst[2:0], 8'h00, 0, 8'h00, 0);
+                    sm83_rlc_test_sub(dst[2:0], 8'hFF, 0, 8'hFF, 1);
+                    sm83_rlc_test_sub(dst[2:0], 8'h55, 0, 8'hAA, 0);
+                    sm83_rlc_test_sub(dst[2:0], 8'hAA, 0, 8'h55, 1);
+                end
+            end
+        end
+    endtask
+
+    // RRCのテスト
+    task automatic sm83_rrc_test_sub;
+        input reg [2:0] dst;
+        input reg [7:0] initial_value;
+        input reg initial_carry;
+        input reg [7:0] expected_value;
+        input reg expected_carry;
+
+        begin
+            sm83_reset();
+            
+            // 命令を生成
+            memory[0] = 8'b11001011; // PREFIX
+            memory[1] = {5'b00001, dst};
+            sm83_set_r8(dst, initial_value);
+            cpu.flags[FLAG_C] = initial_carry;
+            
+            repeat (3) @(posedge clk);
+            @(negedge clk);
+            
+            `EXPECT_EQ(cpu.pc, 2);
+            `EXPECT_EQ(cpu.get_r8(dst), expected_value);
+            `EXPECT_EQ(cpu.flags[FLAG_C], expected_carry);
+            `EXPECT_EQ(cpu.flags[FLAG_Z], expected_value === 0);
+            `EXPECT_EQ(cpu.flags[FLAG_N], 0);
+            `EXPECT_EQ(cpu.flags[FLAG_H], 0);
+        end
+    endtask
+
+    // RRCのテスト
+    task automatic sm83_rrc_test;
+        integer dst;
+        begin
+            for (dst = 0; dst < 8; dst = dst + 1) begin
+                if (dst[2:0] !== R8_HL_INDIRECT) begin
+                    sm83_rrc_test_sub(dst[2:0], 8'h00, 0, 8'h00, 0);
+                    sm83_rrc_test_sub(dst[2:0], 8'hFF, 0, 8'hFF, 1);
+                    sm83_rrc_test_sub(dst[2:0], 8'h55, 0, 8'hAA, 1);
+                    sm83_rrc_test_sub(dst[2:0], 8'hAA, 0, 8'h55, 0);
+                end
+            end
+        end
+    endtask
+
+    // RLのテスト
+    task automatic sm83_rl_test_sub;
+        input reg [2:0] dst;
+        input reg [7:0] initial_value;
+        input reg initial_carry;
+        input reg [7:0] expected_value;
+        input reg expected_carry;
+
+        begin
+            sm83_reset();
+            
+            // 命令を生成
+            memory[0] = 8'b11001011; // PREFIX
+            memory[1] = {5'b00010, dst};
+            sm83_set_r8(dst, initial_value);
+            cpu.flags[FLAG_C] = initial_carry;
+            
+            repeat (3) @(posedge clk);
+            @(negedge clk);
+            
+            `EXPECT_EQ(cpu.pc, 2);
+            `EXPECT_EQ(cpu.get_r8(dst), expected_value);
+            `EXPECT_EQ(cpu.flags[FLAG_C], expected_carry);
+            `EXPECT_EQ(cpu.flags[FLAG_Z], expected_value === 0);
+            `EXPECT_EQ(cpu.flags[FLAG_N], 0);
+            `EXPECT_EQ(cpu.flags[FLAG_H], 0);
+        end
+    endtask
+
+    // RLのテスト
+    task automatic sm83_rl_test;
+        integer dst;
+        begin
+            for (dst = 0; dst < 1; dst = dst + 1) begin
+                if (dst[2:0] !== R8_HL_INDIRECT) begin
+                    sm83_rl_test_sub(dst[2:0], 8'h00, 0, 8'h00, 0);
+                    sm83_rl_test_sub(dst[2:0], 8'h00, 1, 8'h01, 0);
+                    sm83_rl_test_sub(dst[2:0], 8'hFF, 0, 8'hFE, 1);
+                    sm83_rl_test_sub(dst[2:0], 8'hFF, 1, 8'hFF, 1);
+                    sm83_rl_test_sub(dst[2:0], 8'h55, 0, 8'hAA, 0);
+                    sm83_rl_test_sub(dst[2:0], 8'h55, 1, 8'hAB, 0);
+                    sm83_rl_test_sub(dst[2:0], 8'hAA, 0, 8'h54, 1);
+                    sm83_rl_test_sub(dst[2:0], 8'hAA, 1, 8'h55, 1);
+                end
+            end
+        end
+    endtask
+
+    // RRのテスト
+    task automatic sm83_rr_test_sub;
+        input reg [2:0] dst;
+        input reg [7:0] initial_value;
+        input reg initial_carry;
+        input reg [7:0] expected_value;
+        input reg expected_carry;
+
+        begin
+            sm83_reset();
+            
+            // 命令を生成
+            memory[0] = 8'b11001011; // PREFIX
+            memory[1] = {5'b00011, dst};
+            sm83_set_r8(dst, initial_value);
+            cpu.flags[FLAG_C] = initial_carry;
+            
+            repeat (3) @(posedge clk);
+            @(negedge clk);
+            
+            `EXPECT_EQ(cpu.pc, 2);
+            `EXPECT_EQ(cpu.get_r8(dst), expected_value);
+            `EXPECT_EQ(cpu.flags[FLAG_C], expected_carry);
+            `EXPECT_EQ(cpu.flags[FLAG_Z], expected_value === 0);
+            `EXPECT_EQ(cpu.flags[FLAG_N], 0);
+            `EXPECT_EQ(cpu.flags[FLAG_H], 0);
+        end
+    endtask
+
+    // RRのテスト
+    task automatic sm83_rr_test;
+        integer dst;
+        begin
+            for (dst = 0; dst < 1; dst = dst + 1) begin
+                if (dst[2:0] !== R8_HL_INDIRECT) begin
+                    sm83_rr_test_sub(dst[2:0], 8'h00, 0, 8'h00, 0);
+                    sm83_rr_test_sub(dst[2:0], 8'h00, 1, 8'h80, 0);
+                    sm83_rr_test_sub(dst[2:0], 8'hFF, 0, 8'h7F, 1);
+                    sm83_rr_test_sub(dst[2:0], 8'hFF, 1, 8'hFF, 1);
+                    sm83_rr_test_sub(dst[2:0], 8'h55, 0, 8'h2A, 1);
+                    sm83_rr_test_sub(dst[2:0], 8'h55, 1, 8'hAA, 1);
+                    sm83_rr_test_sub(dst[2:0], 8'hAA, 0, 8'h55, 0);
+                    sm83_rr_test_sub(dst[2:0], 8'hAA, 1, 8'hD5, 0);
+                end
+            end
+        end
+    endtask
+
     initial begin
         $dumpfile("build/test_sm83.vcd");
         $dumpvars(0, test_sm83);
@@ -2490,6 +2674,14 @@ module test_sm83;
         sm83_ld_sp_hl_test();
         sm83_di_test();
         sm83_ei_test();
+        sm83_rlc_test();
+        sm83_rrc_test();
+        sm83_rl_test();
+        sm83_rr_test();
+        sm83_rlc_test();
+        sm83_rrc_test();
+        sm83_rl_test();
+        sm83_rr_test();
 
         $finish;
     end

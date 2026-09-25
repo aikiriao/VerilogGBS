@@ -1319,12 +1319,60 @@ module sm83 (
                     end
                 end
                 OP_RLC: begin
+                    // RLC
+                    if (mcycle == 8'd1) begin
+                        next_tmpr[7:0] = get_r8(opcode[2:0]);
+                        r8_w_data = {next_tmpr[6:0], next_tmpr[7]};
+                        r8_dst = opcode[2:0];
+                        r8_we = 1;
+                        next_flags[FLAG_Z] = (r8_w_data == 0);
+                        next_flags[FLAG_N] = 0;
+                        next_flags[FLAG_H] = 0;
+                        next_flags[FLAG_C] = next_tmpr[7];
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_RRC: begin
+                    // RRC
+                    if (mcycle == 8'd1) begin
+                        next_tmpr[7:0] = get_r8(opcode[2:0]);
+                        r8_w_data = {next_tmpr[0], next_tmpr[7:1]};
+                        r8_dst = opcode[2:0];
+                        r8_we = 1;
+                        next_flags[FLAG_Z] = (r8_w_data == 0);
+                        next_flags[FLAG_N] = 0;
+                        next_flags[FLAG_H] = 0;
+                        next_flags[FLAG_C] = next_tmpr[0];
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_RL: begin
+                    // RL
+                    if (mcycle == 8'd1) begin
+                        next_tmpr[7:0] = get_r8(opcode[2:0]);
+                        r8_w_data = {next_tmpr[6:0], flags[FLAG_C]};
+                        r8_dst = opcode[2:0];
+                        r8_we = 1;
+                        next_flags[FLAG_Z] = (r8_w_data == 0);
+                        next_flags[FLAG_N] = 0;
+                        next_flags[FLAG_H] = 0;
+                        next_flags[FLAG_C] = next_tmpr[7];
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_RR: begin
+                    // RR
+                    if (mcycle == 8'd1) begin
+                        next_tmpr[7:0] = get_r8(opcode[2:0]);
+                        r8_w_data = {flags[FLAG_C], next_tmpr[7:1]};
+                        r8_dst = opcode[2:0];
+                        r8_we = 1;
+                        next_flags[FLAG_Z] = (r8_w_data == 0);
+                        next_flags[FLAG_N] = 0;
+                        next_flags[FLAG_H] = 0;
+                        next_flags[FLAG_C] = next_tmpr[0];
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_SLA: begin
                 end
