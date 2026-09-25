@@ -97,14 +97,14 @@ localparam OP_DI = 8'd58;
 localparam OP_EI = 8'd59;
 
 // プレフィックス命令
-localparam OP_RLC = 8'd60; 
-localparam OP_RRC = 8'd61; 
-localparam OP_RL = 8'd62; 
-localparam OP_RR = 8'd63; 
-localparam OP_SLA = 8'd64; 
-localparam OP_SRA = 8'd65; 
-localparam OP_SWAP = 8'd66; 
-localparam OP_SRL = 8'd67; 
-localparam OP_BIT = 8'd68; 
-localparam OP_RES = 8'd69; 
-localparam OP_SET = 8'd70; 
+localparam OP_RLC = 8'd60;
+localparam OP_RRC = 8'd61;
+localparam OP_RL = 8'd62;
+localparam OP_RR = 8'd63;
+localparam OP_SLA = 8'd64;
+localparam OP_SRA = 8'd65;
+localparam OP_SWAP = 8'd66;
+localparam OP_SRL = 8'd67;
+localparam OP_BIT = 8'd68;
+localparam OP_RES = 8'd69;
+localparam OP_SET = 8'd70;

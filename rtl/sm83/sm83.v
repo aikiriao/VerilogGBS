@@ -219,7 +219,7 @@ module sm83 (
         input [7:0] data
     );
     begin
-        case (data)
+        casez (data)
             8'b00000???: decode_prefix_opcode = OP_RLC;
             8'b00001???: decode_prefix_opcode = OP_RRC;
             8'b00010???: decode_prefix_opcode = OP_RL;
@@ -416,6 +416,9 @@ module sm83 (
                         o_re = 1;
                         next_mcycle = 8'd0;
                     end
+                end
+                OP_LD16_SP_TO_IMM16_INDIRECT: begin
+                    // TODO:
                 end
                 OP_INC16: begin
                     // INC r16
@@ -1148,12 +1151,114 @@ module sm83 (
                     end
                 end
                 OP_PREFIX: begin
+                    // PREFIX命令のデコード
+                    if (mcycle == 8'd1) begin
+                        o_address = pc;
+                        o_re = 1;
+                        next_op = decode_prefix_opcode(i_r_data);
+                        next_opcode = i_r_data;
+                        next_pc = pc + 16'd1;
+                        next_mcycle = 8'd1;
+                    end
                 end
                 OP_LDH: begin
+                    if (opcode[4]) begin
+                        // LDH A, [C]
+                        if (mcycle == 8'd1) begin
+                            o_address = {8'hFF, c};
+                            o_re = 1;
+                            r8_w_data = i_r_data;
+                            r8_dst = R8_A;
+                            r8_we = 1;
+                            next_mcycle = 8'd0;
+                        end
+                    end else begin
+                        // LDH [C], A
+                        if (mcycle == 8'd1) begin
+                            o_address = {8'hFF, c};
+                            o_we = 1;
+                            o_w_data = a;
+                            next_mcycle = 8'd0;
+                        end
+                    end
                 end
                 OP_LDH_IMM8: begin
+                    if (opcode[4]) begin
+                        // LDH A, [imm8]
+                        if (mcycle == 8'd1) begin
+                            o_address = pc;
+                            o_re = 1;
+                            next_tmpr[7:0] = i_r_data;
+                            next_pc = pc + 16'd1;
+                            next_mcycle = 8'd2;
+                        end else if (mcycle == 8'd2) begin
+                            o_address = {8'hFF, tmpr[7:0]};
+                            o_re = 1;
+                            r8_w_data = i_r_data;
+                            r8_dst = R8_A;
+                            r8_we = 1;
+                            next_mcycle = 8'd0;
+                        end
+                    end else begin
+                        // LDH [imm8], A
+                        if (mcycle == 8'd1) begin
+                            o_address = pc;
+                            o_re = 1;
+                            next_tmpr[7:0] = i_r_data;
+                            next_pc = pc + 16'd1;
+                            next_mcycle = 8'd2;
+                        end else if (mcycle == 8'd2) begin
+                            o_address = {8'hFF, tmpr[7:0]};
+                            o_we = 1;
+                            o_w_data = a;
+                            next_mcycle = 8'd0;
+                        end
+                    end
                 end
                 OP_LD_IMM16: begin
+                    if (opcode[4]) begin
+                        // LD A, [imm16]
+                        if (mcycle == 8'd1) begin
+                            o_address = pc;
+                            o_re = 1;
+                            next_tmpr[7:0] = i_r_data;
+                            next_pc = pc + 16'd1;
+                            next_mcycle = 8'd2;
+                        end else if (mcycle == 8'd2) begin
+                            o_address = pc;
+                            o_re = 1;
+                            next_tmpr = {i_r_data, tmpr[7:0]};
+                            next_pc = pc + 16'd1;
+                            next_mcycle = 8'd3;
+                        end else if (mcycle == 8'd3) begin
+                            o_address = tmpr;
+                            o_re = 1;
+                            r8_w_data = i_r_data;
+                            r8_dst = R8_A;
+                            r8_we = 1;
+                            next_mcycle = 8'd0;
+                        end
+                    end else begin
+                        // LD [imm16], A
+                        if (mcycle == 8'd1) begin
+                            o_address = pc;
+                            o_re = 1;
+                            next_tmpr[7:0] = i_r_data;
+                            next_pc = pc + 16'd1;
+                            next_mcycle = 8'd2;
+                        end else if (mcycle == 8'd2) begin
+                            o_address = pc;
+                            o_re = 1;
+                            next_tmpr = {i_r_data, tmpr[7:0]};
+                            next_pc = pc + 16'd1;
+                            next_mcycle = 8'd3;
+                        end else if (mcycle == 8'd3) begin
+                            o_address = tmpr;
+                            o_we = 1;
+                            o_w_data = a;
+                            next_mcycle = 8'd0;
+                        end
+                    end
                 end
                 OP_ADD_SP: begin
                 end
@@ -1164,6 +1269,28 @@ module sm83 (
                 OP_DI: begin
                 end
                 OP_EI: begin
+                end
+                OP_RLC: begin
+                end
+                OP_RRC: begin
+                end
+                OP_RL: begin
+                end
+                OP_RR: begin
+                end
+                OP_SLA: begin
+                end
+                OP_SRA: begin
+                end
+                OP_SWAP: begin
+                end
+                OP_SRL: begin
+                end
+                OP_BIT: begin
+                end
+                OP_RES: begin
+                end
+                OP_SET: begin
                 end
                 default: begin
                     // TODO

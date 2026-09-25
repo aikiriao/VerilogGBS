@@ -2098,10 +2098,10 @@ module test_sm83;
 
             // 意図的にレジスタを書き換え
             case (dst) 
-                R16STK_BC: {cpu.b, cpu.c} = push_value ^ 16'hFF;
-                R16STK_DE: {cpu.d, cpu.e} = push_value ^ 16'hFF;
-                R16STK_HL: {cpu.h, cpu.l} = push_value ^ 16'hFF;
-                R16STK_AF: {cpu.a, cpu.flags} = push_value ^ 16'hFF;
+                R16STK_BC: {cpu.b, cpu.c} = push_value ^ 16'hFFFF;
+                R16STK_DE: {cpu.d, cpu.e} = push_value ^ 16'hFFFF;
+                R16STK_HL: {cpu.h, cpu.l} = push_value ^ 16'hFFFF;
+                R16STK_AF: {cpu.a, cpu.flags} = push_value ^ 16'hFFFF;
             endcase
 
             // POPを実行
@@ -2131,6 +2131,142 @@ module test_sm83;
                 for (d = 0; d < 4; d = d + 1) begin
                     sm83_pop_push_test_sub(d[1:0]);
                 end
+            end
+        end
+    endtask
+
+    // LDHのテスト
+    task automatic sm83_ldh_test_sub;
+        input reg to_a;
+        reg [7:0] lsb_address;
+        reg [7:0] value;
+
+        begin
+            sm83_reset();
+
+            random8(lsb_address);
+            random8(value);
+            
+            // 命令を生成
+            memory[0] = {3'b111, to_a, 4'b0010};
+            cpu.c = lsb_address;
+            if (to_a) begin
+                memory[{8'hFF, lsb_address}] = value;
+            end else begin
+                cpu.a = value;
+            end
+
+            repeat (2) @(posedge clk);
+            @(negedge clk);
+
+            `EXPECT_EQ(cpu.pc, 1);
+            if (to_a) begin
+                `EXPECT_EQ(cpu.a, value);
+            end else begin
+                `EXPECT_EQ(memory[{8'hFF, lsb_address}], value);
+            end
+        end
+    endtask
+
+    // LDHのテスト
+    task automatic sm83_ldh_test;
+        integer t;
+        localparam iteration = 10;
+        begin
+            for (t = 0; t < iteration; t = t + 1) begin
+                sm83_ldh_test_sub(0);
+                sm83_ldh_test_sub(1);
+            end
+        end
+    endtask
+
+    // LDH imm8のテスト
+    task automatic sm83_ldh_imm8_test_sub;
+        input reg to_a;
+        reg [7:0] lsb_address;
+        reg [7:0] value;
+
+        begin
+            sm83_reset();
+
+            random8(lsb_address);
+            random8(value);
+            
+            // 命令を生成
+            memory[0] = {3'b111, to_a, 4'b0000};
+            memory[1] = lsb_address;
+            if (to_a) begin
+                memory[{8'hFF, lsb_address}] = value;
+            end else begin
+                cpu.a = value;
+            end
+
+            repeat (3) @(posedge clk);
+            @(negedge clk);
+
+            `EXPECT_EQ(cpu.pc, 2);
+            if (to_a) begin
+                `EXPECT_EQ(cpu.a, value);
+            end else begin
+                `EXPECT_EQ(memory[{8'hFF, lsb_address}], value);
+            end
+        end
+    endtask
+
+    // LDH imm8のテスト
+    task automatic sm83_ldh_imm8_test;
+        integer t;
+        localparam iteration = 10;
+        begin
+            for (t = 0; t < iteration; t = t + 1) begin
+                sm83_ldh_imm8_test_sub(0);
+                sm83_ldh_imm8_test_sub(1);
+            end
+        end
+    endtask
+
+    // LD [imm16]のテスト
+    task automatic sm83_ld_imm16_test_sub;
+        input reg to_a;
+        reg [15:0] imm16;
+        reg [7:0] value;
+
+        begin
+            sm83_reset();
+
+            random16(imm16);
+            random8(value);
+            
+            // 命令を生成
+            memory[0] = {3'b111, to_a, 4'b1010};
+            memory[1] = imm16[7:0];
+            memory[2] = imm16[15:8];
+            if (to_a) begin
+                memory[imm16] = value;
+            end else begin
+                cpu.a = value;
+            end
+
+            repeat (4) @(posedge clk);
+            @(negedge clk);
+
+            `EXPECT_EQ(cpu.pc, 3);
+            if (to_a) begin
+                `EXPECT_EQ(cpu.a, value);
+            end else begin
+                `EXPECT_EQ(memory[imm16], value);
+            end
+        end
+    endtask
+
+    // LD [imm16]のテスト
+    task automatic sm83_ld_imm16_test;
+        integer t;
+        localparam iteration = 10;
+        begin
+            for (t = 0; t < iteration; t = t + 1) begin
+                sm83_ld_imm16_test_sub(0);
+                sm83_ld_imm16_test_sub(1);
             end
         end
     endtask
@@ -2187,6 +2323,9 @@ module test_sm83;
         sm83_call_cond_test();
         sm83_rst_test();
         sm83_pop_push_test();
+        sm83_ldh_test();
+        sm83_ldh_imm8_test();
+        sm83_ld_imm16_test();
 
         $finish;
     end
