@@ -205,7 +205,7 @@ module sm83 (
             8'b111?0000: decode_opcode = OP_LDH_IMM8;
             8'b111?1010: decode_opcode = OP_LD_IMM16;
             8'b11101000: decode_opcode = OP_ADD_SP;
-            8'b11111000: decode_opcode = OP_LD_SP_IMM8;
+            8'b11111000: decode_opcode = OP_LD_HL_SP_IMM8;
             8'b11111001: decode_opcode = OP_LD_SP_HL;
             8'b11110011: decode_opcode = OP_DI;
             8'b11111011: decode_opcode = OP_EI;
@@ -1261,14 +1261,62 @@ module sm83 (
                     end
                 end
                 OP_ADD_SP: begin
+                    // ADD SP, emm8
+                    if (mcycle == 8'd1) begin
+                        o_address = pc;
+                        o_re = 1;
+                        // 符号拡張して符号付き加算
+                        next_tmpr = {{8{i_r_data[7]}}, i_r_data};
+                        next_sp = sp + $signed(next_tmpr);
+                        // キャリーの判定は8bitの範囲で行う
+                        next_flags[FLAG_H] = (((sp ^ next_tmpr ^ next_pc) & 16'h10) == 16'h10);
+                        next_flags[FLAG_C] = (((sp ^ next_tmpr ^ next_pc) & 16'h100) == 16'h100);
+                        next_flags[FLAG_Z] = 0;
+                        next_flags[FLAG_N] = 0;
+                        next_pc = pc + 16'd1;
+                        next_mcycle = 8'd0;
+                    end
                 end
-                OP_LD_SP_IMM8: begin
+                OP_LD_HL_SP_IMM8: begin
+                    // LD HL, SP + emm8
+                    if (mcycle == 8'd1) begin
+                        o_address = pc;
+                        o_re = 1;
+                        // 符号拡張して符号付き加算
+                        next_tmpr = {{8{i_r_data[7]}}, i_r_data};
+                        r16_w_data = sp + $signed(next_tmpr);
+                        r16_dst = R16_HL;
+                        r16_we = 1;
+                        // キャリーの判定は8bitの範囲で行う
+                        next_flags[FLAG_H] = (((sp ^ next_tmpr ^ r16_w_data) & 16'h10) == 16'h10);
+                        next_flags[FLAG_C] = (((sp ^ next_tmpr ^ r16_w_data) & 16'h100) == 16'h100);
+                        next_flags[FLAG_Z] = 0;
+                        next_flags[FLAG_N] = 0;
+                        next_pc = pc + 16'd1;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_LD_SP_HL: begin
+                    // LD SP, HL
+                    if (mcycle == 8'd1) begin
+                        next_sp = get_r16(R16_HL);
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_DI: begin
+                    // DI
+                    // 実機では即時反映だが本実装では次クロックから
+                    if (mcycle == 8'd1) begin
+                        next_ime = 0;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_EI: begin
+                    // EI
+                    if (mcycle == 8'd1) begin
+                        next_ime = 1;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_RLC: begin
                 end

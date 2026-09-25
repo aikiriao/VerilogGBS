@@ -2271,6 +2271,165 @@ module test_sm83;
         end
     endtask
 
+    // ADD SP emm8のテスト
+    task automatic sm83_add_sp_emm8_test_sub;
+        input reg [15:0] initial_sp;
+        input reg signed [7:0] emm8;
+        input reg [15:0] expected_sp;
+
+        begin
+            sm83_reset();
+            
+            // 命令を生成
+            memory[0] = 8'b11101000;
+            memory[1] = emm8;
+            cpu.sp = initial_sp;
+
+            repeat (2) @(posedge clk);
+            @(negedge clk);
+            
+            `EXPECT_EQ(cpu.pc, 2);
+            `EXPECT_EQ(cpu.sp, expected_sp);
+            `EXPECT_EQ(cpu.flags[FLAG_Z], 0);
+            `EXPECT_EQ(cpu.flags[FLAG_N], 0);
+        end
+    endtask
+
+    // ADD SP emm8のテスト
+    task automatic sm83_add_sp_emm8_test;
+        begin
+            sm83_add_sp_emm8_test_sub(16'h0000,  0, 16'h0000);
+            sm83_add_sp_emm8_test_sub(16'h0000,  1, 16'h0001);
+            sm83_add_sp_emm8_test_sub(16'h0000,  2, 16'h0002);
+            sm83_add_sp_emm8_test_sub(16'h0000,  3, 16'h0003);
+            sm83_add_sp_emm8_test_sub(16'h0000, -1, 16'hFFFF);
+            sm83_add_sp_emm8_test_sub(16'h0000, -2, 16'hFFFE);
+            sm83_add_sp_emm8_test_sub(16'h0000, -3, 16'hFFFD);
+            sm83_add_sp_emm8_test_sub(16'h0000, -4, 16'hFFFC);
+        end
+    endtask
+
+    // LD HL, SP + emm8のテスト
+    task automatic sm83_ld_hl_sp_emm8_test_sub;
+        input reg [15:0] initial_sp;
+        input reg signed [7:0] emm8;
+        input reg [15:0] expected_hl;
+
+        begin
+            sm83_reset();
+            
+            // 命令を生成
+            memory[0] = 8'b11111000;
+            memory[1] = emm8;
+            cpu.sp = initial_sp;
+
+            repeat (2) @(posedge clk);
+            @(negedge clk);
+            
+            `EXPECT_EQ(cpu.pc, 2);
+            `EXPECT_EQ(cpu.get_r16(R16_HL), expected_hl);
+            `EXPECT_EQ(cpu.flags[FLAG_Z], 0);
+            `EXPECT_EQ(cpu.flags[FLAG_N], 0);
+        end
+    endtask
+
+    // LD HL, SP + emm8のテスト
+    task automatic sm83_ld_hl_sp_emm8_test;
+        begin
+            sm83_ld_hl_sp_emm8_test_sub(16'h0000,  0, 16'h0000);
+            sm83_ld_hl_sp_emm8_test_sub(16'h0000,  1, 16'h0001);
+            sm83_ld_hl_sp_emm8_test_sub(16'h0000,  2, 16'h0002);
+            sm83_ld_hl_sp_emm8_test_sub(16'h0000,  3, 16'h0003);
+            sm83_ld_hl_sp_emm8_test_sub(16'h0000, -1, 16'hFFFF);
+            sm83_ld_hl_sp_emm8_test_sub(16'h0000, -2, 16'hFFFE);
+            sm83_ld_hl_sp_emm8_test_sub(16'h0000, -3, 16'hFFFD);
+            sm83_ld_hl_sp_emm8_test_sub(16'h0000, -4, 16'hFFFC);
+        end
+    endtask
+
+    // LD SP, HLのテスト
+    task automatic sm83_ld_sp_hl_test_sub;
+        reg [15:0] initial_hl;
+
+        begin
+            sm83_reset();
+            
+            // 命令を生成
+            memory[0] = 8'b11111001;
+            random16(initial_hl);
+            sm83_set_r16(R16_HL, initial_hl);
+
+            repeat (2) @(posedge clk);
+            @(negedge clk);
+            
+            `EXPECT_EQ(cpu.pc, 1);
+            `EXPECT_EQ(cpu.sp, initial_hl);
+        end
+    endtask
+
+    // LD SP, HLのテスト
+    task automatic sm83_ld_sp_hl_test;
+        integer c;
+        localparam iteration = 10;
+        begin
+            for (c = 0; c < iteration; c = c + 1) begin
+                sm83_ld_sp_hl_test_sub();
+            end
+        end
+    endtask
+
+    // DIのテスト
+    task automatic sm83_di_test_sub;
+        input reg initial_ime;
+        begin
+            sm83_reset();
+            
+            // 命令を生成
+            memory[0] = 8'b11110011;
+            cpu.ime = initial_ime;
+
+            repeat (2) @(posedge clk);
+            @(negedge clk);
+            
+            `EXPECT_EQ(cpu.pc, 1);
+            `EXPECT_EQ(cpu.ime, 0);
+        end
+    endtask
+
+    // DIのテスト
+    task automatic sm83_di_test;
+        begin
+            sm83_di_test_sub(0);
+            sm83_di_test_sub(1);
+        end
+    endtask
+
+    // EIのテスト
+    task automatic sm83_ei_test_sub;
+        input reg initial_ime;
+        begin
+            sm83_reset();
+            
+            // 命令を生成
+            memory[0] = 8'b11111011;
+            cpu.ime = initial_ime;
+
+            repeat (2) @(posedge clk);
+            @(negedge clk);
+            
+            `EXPECT_EQ(cpu.pc, 1);
+            `EXPECT_EQ(cpu.ime, 1);
+        end
+    endtask
+
+    // EIのテスト
+    task automatic sm83_ei_test;
+        begin
+            sm83_ei_test_sub(0);
+            sm83_ei_test_sub(1);
+        end
+    endtask
+
     initial begin
         $dumpfile("build/test_sm83.vcd");
         $dumpvars(0, test_sm83);
@@ -2326,6 +2485,11 @@ module test_sm83;
         sm83_ldh_test();
         sm83_ldh_imm8_test();
         sm83_ld_imm16_test();
+        sm83_add_sp_emm8_test();
+        sm83_ld_hl_sp_emm8_test();
+        sm83_ld_sp_hl_test();
+        sm83_di_test();
+        sm83_ei_test();
 
         $finish;
     end
