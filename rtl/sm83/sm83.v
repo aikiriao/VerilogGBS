@@ -35,6 +35,7 @@ module sm83 (
     // 命令デコード用
     reg [1:0] r16_dst; // 16bitレジスタディステネーション識別
     reg r16_we; // 16bitレジスタ書き込みイネーブル
+    reg r16stk_we; // 16bitスタックレジスタ書き込みイネーブル
     reg [15:0] r16_w_data; // 16bitレジスタ書き込みデータ
     // 命令デコード用
     reg [15:0] tmpr; // 命令デコード用の一時レジスタ
@@ -283,6 +284,14 @@ module sm83 (
                     R16_SP: sp <= r16_w_data;
                 endcase
             end
+            if (r16stk_we) begin
+                case (r16_dst)
+                    R16STK_BC: {b, c} <= r16_w_data;
+                    R16STK_DE: {d, e} <= r16_w_data;
+                    R16STK_HL: {h, l} <= r16_w_data;
+                    R16STK_AF: {a, flags} <= r16_w_data;
+                endcase
+            end
         end
     end
 
@@ -311,6 +320,7 @@ module sm83 (
         r16_w_data = 16'h0000;
         r16_dst = 2'd0;
         r16_we = 0;
+        r16stk_we = 0;
 
         // マシンサイクル毎の処理
         if (mcycle == 8'd0) begin
@@ -1077,10 +1087,65 @@ module sm83 (
                     end
                 end
                 OP_RST: begin
+                    // RST
+                    if (mcycle == 8'd1) begin
+                        o_address = sp - 16'd1;
+                        o_we = 1;
+                        o_w_data = pc[15:8];
+                        next_sp = sp - 16'd1;
+                        next_mcycle = 8'd2;
+                    end else if (mcycle == 8'd2) begin
+                        o_address = sp - 16'd1;
+                        o_we = 1;
+                        o_w_data = pc[7:0];
+                        next_sp = sp - 16'd1;
+                        next_pc = {10'd0, opcode[5:3], 3'b000};
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_POP: begin
+                    // POP
+                    if (mcycle == 8'd1) begin
+                        o_address = sp;
+                        o_re = 1;
+                        next_tmpr[7:0] = i_r_data;
+                        next_sp = sp + 16'd1;
+                        next_mcycle = 8'd2;
+                    end else if (mcycle == 8'd2) begin
+                        o_address = sp;
+                        o_re = 1;
+                        r16_w_data = {i_r_data, tmpr[7:0]};
+                        r16_dst = opcode[5:4];
+                        r16stk_we = 1;
+                        next_sp = sp + 16'd1;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_PUSH: begin
+                    // PUSH
+                    if (mcycle == 8'd1) begin
+                        o_address = sp - 16'd1;
+                        o_we = 1;
+                        case (opcode[5:4]) 
+                            R16STK_BC: o_w_data = b;
+                            R16STK_DE: o_w_data = d;
+                            R16STK_HL: o_w_data = h;
+                            R16STK_AF: o_w_data = a;
+                        endcase
+                        next_sp = sp - 16'd1;
+                        next_mcycle = 8'd2;
+                    end else if (mcycle == 8'd2) begin
+                        o_address = sp - 16'd1;
+                        o_we = 1;
+                        case (opcode[5:4]) 
+                            R16STK_BC: o_w_data = c;
+                            R16STK_DE: o_w_data = e;
+                            R16STK_HL: o_w_data = l;
+                            R16STK_AF: o_w_data = flags;
+                        endcase
+                        next_sp = sp - 16'd1;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_PREFIX: begin
                 end

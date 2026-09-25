@@ -1929,33 +1929,6 @@ module test_sm83;
         end
     endtask
 
-    // CALLのテスト
-    task automatic sm83_call_test_sub;
-        reg [15:0] jp_address;
-        reg [15:0] sp_address;
-
-        begin
-            sm83_reset();
-            
-            random16(jp_address);
-            random16(sp_address);
-
-            // 命令を生成
-            memory[0] = 8'b11001101;
-            memory[1] = jp_address[7:0];
-            memory[2] = jp_address[15:8];
-            cpu.sp = sp_address;
-
-            repeat (5) @(posedge clk);
-            @(negedge clk);
-
-            `EXPECT_EQ(cpu.pc, jp_address);
-            `EXPECT_EQ(memory[sp_address - 16'd1], 0);
-            `EXPECT_EQ(memory[sp_address - 16'd2], 3);
-            `EXPECT_EQ(cpu.sp, sp_address - 16'd2);
-        end
-    endtask
-
     // CALL ccのテスト
     task automatic sm83_call_cond_test_sub;
         input reg [1:0] cc;
@@ -2013,12 +1986,151 @@ module test_sm83;
     endtask
 
     // CALLのテスト
+    task automatic sm83_call_test_sub;
+        reg [15:0] jp_address;
+        reg [15:0] sp_address;
+
+        begin
+            sm83_reset();
+            
+            random16(jp_address);
+            random16(sp_address);
+
+            // 命令を生成
+            memory[0] = 8'b11001101;
+            memory[1] = jp_address[7:0];
+            memory[2] = jp_address[15:8];
+            cpu.sp = sp_address;
+
+            repeat (5) @(posedge clk);
+            @(negedge clk);
+
+            `EXPECT_EQ(cpu.pc, jp_address);
+            `EXPECT_EQ(memory[sp_address - 16'd1], 0);
+            `EXPECT_EQ(memory[sp_address - 16'd2], 3);
+            `EXPECT_EQ(cpu.sp, sp_address - 16'd2);
+        end
+    endtask
+
+    // CALLのテスト
     task automatic sm83_call_test;
         integer t;
-        localparam iteration = 1;
+        localparam iteration = 10;
         begin
             for (t = 0; t < iteration; t = t + 1) begin
                 sm83_call_test_sub();
+            end
+        end
+    endtask
+
+    // RSTのテスト
+    task automatic sm83_rst_test_sub;
+        input reg [2:0] dst;
+        reg [15:0] initial_pc;
+        reg [15:0] initial_sp;
+
+        begin
+            sm83_reset();
+
+            random16(initial_sp);
+            random16(initial_pc);
+            
+            // 命令を生成
+            memory[initial_pc] = {2'b11, dst, 3'b111};
+            cpu.pc = initial_pc;
+            cpu.sp = initial_sp;
+
+            repeat (3) @(posedge clk);
+            @(negedge clk);
+
+            initial_pc = initial_pc + 16'd1;
+            `EXPECT_EQ(cpu.pc, {10'd0, dst, 3'b000});
+            `EXPECT_EQ(memory[initial_sp - 16'd1], initial_pc[15:8]);
+            `EXPECT_EQ(memory[initial_sp - 16'd2], initial_pc[7:0]);
+            `EXPECT_EQ(cpu.sp, initial_sp - 16'd2);
+        end
+    endtask
+
+    // RSTのテスト
+    task automatic sm83_rst_test;
+        integer t, d;
+        localparam iteration = 10;
+        begin
+            for (t = 0; t < iteration; t = t + 1) begin
+                for (d = 0; d < 8; d = d + 1) begin
+                    sm83_rst_test_sub(d[2:0]);
+                end
+            end
+        end
+    endtask
+
+    // POP/PUSHのテスト
+    task automatic sm83_pop_push_test_sub;
+        input reg [1:0] dst;
+        reg [15:0] initial_sp;
+        reg [15:0] push_value;
+
+        begin
+            sm83_reset();
+
+            random16(initial_sp);
+            random16(push_value);
+            
+            // 命令を生成
+            memory[0] = {2'b11, dst, 4'b0101}; // PUSH
+            memory[1] = {2'b11, dst, 4'b0001}; // POP
+            cpu.sp = initial_sp;
+            case (dst) 
+                R16STK_BC: {cpu.b, cpu.c} = push_value;
+                R16STK_DE: {cpu.d, cpu.e} = push_value;
+                R16STK_HL: {cpu.h, cpu.l} = push_value;
+                R16STK_AF: {cpu.a, cpu.flags} = push_value;
+            endcase
+
+            // PUSHを実行
+            repeat (3) @(posedge clk);
+            @(negedge clk);
+
+            `EXPECT_EQ(cpu.pc, 1);
+            `EXPECT_EQ(memory[initial_sp - 16'd1], push_value[15:8]);
+            `EXPECT_EQ(memory[initial_sp - 16'd2], push_value[7:0]);
+            `EXPECT_EQ(cpu.sp, initial_sp - 16'd2);
+
+            // 意図的にレジスタを書き換え
+            case (dst) 
+                R16STK_BC: {cpu.b, cpu.c} = push_value ^ 16'hFF;
+                R16STK_DE: {cpu.d, cpu.e} = push_value ^ 16'hFF;
+                R16STK_HL: {cpu.h, cpu.l} = push_value ^ 16'hFF;
+                R16STK_AF: {cpu.a, cpu.flags} = push_value ^ 16'hFF;
+            endcase
+
+            // POPを実行
+            repeat (3) @(posedge clk);
+            @(negedge clk);
+
+            `EXPECT_EQ(cpu.pc, 2);
+            `EXPECT_EQ(memory[initial_sp - 16'd1], push_value[15:8]);
+            `EXPECT_EQ(memory[initial_sp - 16'd2], push_value[7:0]);
+            `EXPECT_EQ(cpu.sp, initial_sp);
+
+            case (dst) 
+                R16STK_BC: begin `EXPECT_EQ({cpu.b, cpu.c}, push_value); end
+                R16STK_DE: begin `EXPECT_EQ({cpu.d, cpu.e}, push_value); end
+                R16STK_HL: begin `EXPECT_EQ({cpu.h, cpu.l}, push_value); end
+                R16STK_AF: begin `EXPECT_EQ({cpu.a, cpu.flags}, push_value); end
+            endcase
+        end
+    endtask
+
+    // POP/PUSHのテスト
+    task automatic sm83_pop_push_test;
+        integer t, d;
+        localparam iteration = 10;
+        begin
+            for (t = 0; t < iteration; t = t + 1) begin
+                for (d = 0; d < 4; d = d + 1) begin
+                    sm83_pop_push_test_sub(d[1:0]);
+                end
             end
         end
     endtask
@@ -2073,6 +2185,8 @@ module test_sm83;
         sm83_jp_hl_test();
         sm83_call_test();
         sm83_call_cond_test();
+        sm83_rst_test();
+        sm83_pop_push_test();
 
         $finish;
     end
