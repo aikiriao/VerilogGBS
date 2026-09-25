@@ -309,6 +309,45 @@ module test_sm83;
         end
     endtask
 
+    // LD [imm16], SPのテスト
+    task automatic sm83_ld16_sp_to_imm16_test_sub;
+        reg [15:0] initial_sp;
+        reg [15:0] imm16;
+
+        begin
+            sm83_reset();
+
+            random16(initial_sp);
+            random16(imm16);
+            
+            // 命令を生成
+            memory[0] = 8'b00001000;
+            memory[1] = imm16[7:0];
+            memory[2] = imm16[15:8];
+            
+            sm83_set_r16(R16_SP, initial_sp);
+            
+            repeat (5) @(posedge clk);
+            @(negedge clk);
+            
+            `EXPECT_EQ(cpu.pc, 3);
+            // 意図された値が書き込まれているか
+            `EXPECT_EQ(memory[imm16], initial_sp[7:0]); 
+            `EXPECT_EQ(memory[imm16 + 1], initial_sp[15:8]);
+        end
+    endtask
+
+    // LD [imm16], SPのテスト
+    task automatic sm83_ld16_sp_to_imm16_test;
+        integer c;
+        localparam iteration = 10;
+        begin
+            for (c = 0; c < iteration; c = c + 1) begin
+                sm83_ld16_sp_to_imm16_test_sub();
+            end
+        end
+    endtask
+
     // INC r16のテスト
     task automatic sm83_inc_r16_test_sub;
         input reg [1:0] dst;
@@ -3037,6 +3076,7 @@ module test_sm83;
         sm83_ld16_imm16_test();
         sm83_ld_a_to_indirect_test();
         sm83_ld_indirect_to_a_test();
+        sm83_ld16_sp_to_imm16_test();
         sm83_inc_r16_test();
         sm83_dec_r16_test();
         sm83_add16_test();

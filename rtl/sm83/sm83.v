@@ -148,7 +148,7 @@ module sm83 (
             8'b00??0001: decode_opcode = OP_LD16_IMM16;
             8'b00??0010: decode_opcode = OP_LD_A_TO_INDIRECT;
             8'b00??1010: decode_opcode = OP_LD_INDIRECT_TO_A;
-            8'b00001000: decode_opcode = OP_LD16_SP_TO_IMM16_INDIRECT;
+            8'b00001000: decode_opcode = OP_LD16_SP_TO_IMM16;
             8'b00??0011: decode_opcode = OP_INC16;
             8'b00??1011: decode_opcode = OP_DEC16;
             8'b00??1001: decode_opcode = OP_ADD16;
@@ -417,8 +417,31 @@ module sm83 (
                         next_mcycle = 8'd0;
                     end
                 end
-                OP_LD16_SP_TO_IMM16_INDIRECT: begin
-                    // TODO:
+                OP_LD16_SP_TO_IMM16: begin
+                    // LD [imm16], SP
+                    if (mcycle == 8'd1) begin
+                        o_address = pc;
+                        o_re = 1;
+                        next_pc = pc + 16'd1;
+                        next_tmpr[7:0] = i_r_data;
+                        next_mcycle = 8'd2;
+                    end else if (mcycle == 8'd2) begin
+                        o_address = pc;
+                        o_re = 1;
+                        next_pc = pc + 16'd1;
+                        next_tmpr = {i_r_data, tmpr[7:0]};
+                        next_mcycle = 8'd3;
+                    end else if (mcycle == 8'd3) begin
+                        o_address = tmpr;
+                        o_we = 1;
+                        o_w_data = sp[7:0];
+                        next_mcycle = 8'd4;
+                    end else if (mcycle == 8'd4) begin
+                        o_address = tmpr + 16'd1;
+                        o_we = 1;
+                        o_w_data = sp[15:8];
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_INC16: begin
                     // INC r16
