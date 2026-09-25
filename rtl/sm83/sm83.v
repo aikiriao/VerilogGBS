@@ -902,10 +902,8 @@ module sm83 (
                         {next_flags[FLAG_Z],
                             next_flags[FLAG_H],
                             next_flags[FLAG_C],
-                            r8_w_data} = sub8(a, i_r_data, 0);
+                            next_tmpr} = sub8(a, i_r_data, 0);
                         next_flags[FLAG_N] = 1;
-                        r8_dst = R8_A;
-                        r8_we = 1;
                         next_pc = pc + 16'd1;
                         next_mcycle = 8'd0;
                     end
