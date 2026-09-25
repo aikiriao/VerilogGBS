@@ -1730,7 +1730,7 @@ module test_sm83;
         end
     endtask
 
-    // RETのテスト
+    // RET ccのテスト
     task automatic sm83_ret_cond_test;
         integer c, t;
         localparam iteration = 10;
@@ -1817,6 +1817,212 @@ module test_sm83;
         end
     endtask
 
+    // JP ccのテスト
+    task automatic sm83_jp_cond_test_sub;
+        input reg [1:0] cc;
+        input reg flag;
+        reg [15:0] jp_address;
+
+        begin
+            sm83_reset();
+            
+            random16(jp_address);
+
+            // 命令を生成
+            memory[0] = {3'b110, cc, 3'b010};
+            memory[1] = jp_address[7:0];
+            memory[2] = jp_address[15:8];
+
+            case (cc) 
+                COND_NZ: cpu.flags[FLAG_Z] = ~flag;
+                COND_Z: cpu.flags[FLAG_Z] = flag;
+                COND_NC: cpu.flags[FLAG_C] = ~flag;
+                COND_C: cpu.flags[FLAG_C] = flag;
+            endcase
+
+            repeat (3) @(posedge clk);
+            @(negedge clk);
+
+            if (flag) begin
+                `EXPECT_EQ(cpu.pc, jp_address);
+            end else begin
+                `EXPECT_EQ(cpu.pc, 3);
+            end
+        end
+    endtask
+
+    // JP ccのテスト
+    task automatic sm83_jp_cond_test;
+        integer c, t;
+        localparam iteration = 10;
+        begin
+            for (c = 0; c < 4; c = c + 1) begin
+                for (t = 0; t < iteration; t = t + 1) begin
+                    sm83_jp_cond_test_sub(c[1:0], 0);
+                    sm83_jp_cond_test_sub(c[1:0], 1);
+                end
+            end
+        end
+    endtask
+
+    // JPのテスト
+    task automatic sm83_jp_test_sub;
+        reg [15:0] jp_address;
+
+        begin
+            sm83_reset();
+            
+            random16(jp_address);
+
+            // 命令を生成
+            memory[0] = 8'b11000011;
+            memory[1] = jp_address[7:0];
+            memory[2] = jp_address[15:8];
+
+            repeat (3) @(posedge clk);
+            @(negedge clk);
+
+            `EXPECT_EQ(cpu.pc, jp_address);
+        end
+    endtask
+
+    // JPのテスト
+    task automatic sm83_jp_test;
+        integer t;
+        localparam iteration = 10;
+        begin
+            for (t = 0; t < iteration; t = t + 1) begin
+                sm83_jp_test_sub();
+            end
+        end
+    endtask
+
+    // JP HLのテスト
+    task automatic sm83_jp_hl_test_sub;
+        reg [15:0] jp_address;
+
+        begin
+            sm83_reset();
+            
+            random16(jp_address);
+
+            // 命令を生成
+            memory[0] = 8'b11101001;
+            cpu.h = jp_address[15:8];
+            cpu.l = jp_address[7:0];
+
+            repeat (2) @(posedge clk);
+            @(negedge clk);
+
+            `EXPECT_EQ(cpu.pc, jp_address);
+        end
+    endtask
+
+    // JP HLのテスト
+    task automatic sm83_jp_hl_test;
+        integer t;
+        localparam iteration = 10;
+        begin
+            for (t = 0; t < iteration; t = t + 1) begin
+                sm83_jp_hl_test_sub();
+            end
+        end
+    endtask
+
+    // CALLのテスト
+    task automatic sm83_call_test_sub;
+        reg [15:0] jp_address;
+        reg [15:0] sp_address;
+
+        begin
+            sm83_reset();
+            
+            random16(jp_address);
+            random16(sp_address);
+
+            // 命令を生成
+            memory[0] = 8'b11001101;
+            memory[1] = jp_address[7:0];
+            memory[2] = jp_address[15:8];
+            cpu.sp = sp_address;
+
+            repeat (5) @(posedge clk);
+            @(negedge clk);
+
+            `EXPECT_EQ(cpu.pc, jp_address);
+            `EXPECT_EQ(memory[sp_address - 16'd1], 0);
+            `EXPECT_EQ(memory[sp_address - 16'd2], 3);
+            `EXPECT_EQ(cpu.sp, sp_address - 16'd2);
+        end
+    endtask
+
+    // CALL ccのテスト
+    task automatic sm83_call_cond_test_sub;
+        input reg [1:0] cc;
+        input reg flag;
+        reg [15:0] jp_address;
+        reg [15:0] sp_address;
+
+        begin
+            sm83_reset();
+            
+            random16(jp_address);
+            random16(sp_address);
+
+            // 命令を生成
+            memory[0] = {3'b110, cc, 3'b100};
+            memory[1] = jp_address[7:0];
+            memory[2] = jp_address[15:8];
+            cpu.sp = sp_address;
+
+            case (cc) 
+                COND_NZ: cpu.flags[FLAG_Z] = ~flag;
+                COND_Z: cpu.flags[FLAG_Z] = flag;
+                COND_NC: cpu.flags[FLAG_C] = ~flag;
+                COND_C: cpu.flags[FLAG_C] = flag;
+            endcase
+
+            if (flag) begin
+                repeat (5) @(posedge clk);
+                @(negedge clk);
+                `EXPECT_EQ(cpu.pc, jp_address);
+                `EXPECT_EQ(memory[sp_address - 16'd1], 0);
+                `EXPECT_EQ(memory[sp_address - 16'd2], 3);
+                `EXPECT_EQ(cpu.sp, sp_address - 16'd2);
+            end else begin
+                repeat (3) @(posedge clk);
+                @(negedge clk);
+                `EXPECT_EQ(cpu.pc, 3);
+                `EXPECT_EQ(cpu.sp, sp_address);
+            end
+        end
+    endtask
+
+    // CALL ccのテスト
+    task automatic sm83_call_cond_test;
+        integer c, t;
+        localparam iteration = 10;
+        begin
+            for (c = 0; c < 4; c = c + 1) begin
+                for (t = 0; t < iteration; t = t + 1) begin
+                    sm83_call_cond_test_sub(c[1:0], 0);
+                    sm83_call_cond_test_sub(c[1:0], 1);
+                end
+            end
+        end
+    endtask
+
+    // CALLのテスト
+    task automatic sm83_call_test;
+        integer t;
+        localparam iteration = 1;
+        begin
+            for (t = 0; t < iteration; t = t + 1) begin
+                sm83_call_test_sub();
+            end
+        end
+    endtask
+
     initial begin
         $dumpfile("build/test_sm83.vcd");
         $dumpvars(0, test_sm83);
@@ -1862,6 +2068,11 @@ module test_sm83;
         sm83_ret_cond_test();
         sm83_ret_test();
         sm83_reti_test();
+        sm83_jp_cond_test();
+        sm83_jp_test();
+        sm83_jp_hl_test();
+        sm83_call_test();
+        sm83_call_cond_test();
 
         $finish;
     end

@@ -37,7 +37,7 @@ module sm83 (
     reg r16_we; // 16bitレジスタ書き込みイネーブル
     reg [15:0] r16_w_data; // 16bitレジスタ書き込みデータ
     // 命令デコード用
-    reg [7:0] tmpr; // 命令デコード用の一時レジスタ
+    reg [15:0] tmpr; // 命令デコード用の一時レジスタ
     // 次状態
     reg [7:0] next_mcycle;
     reg [7:0] next_opcode;
@@ -45,7 +45,7 @@ module sm83 (
     reg [15:0] next_pc;
     reg [7:0] next_flags;
     reg [15:0] next_sp;
-    reg [7:0] next_tmpr;
+    reg [15:0] next_tmpr;
     reg next_ime;
 
     // 8bitレジスタ値の取得
@@ -245,7 +245,7 @@ module sm83 (
             mcycle <= 8'd0;
             op <= OP_NOP;
             opcode <= 8'd0;
-            tmpr <= 8'd0;
+            tmpr <= 16'd0;
             ime <= 1'b0;
             a <= 8'd0;
             b <= 8'd0;
@@ -341,13 +341,13 @@ module sm83 (
                         o_address = pc;
                         o_re = 1;
                         next_pc = pc + 16'd1;
-                        next_tmpr = i_r_data;
+                        next_tmpr[7:0] = i_r_data;
                         next_mcycle = 8'd2;
                     end else if (mcycle == 8'd2) begin
                         o_address = pc;
                         o_re = 1;
                         next_pc = pc + 16'd1;
-                        r16_w_data = {i_r_data, tmpr};
+                        r16_w_data = {i_r_data, tmpr[7:0]};
                         r16_dst = opcode[5:4];
                         r16_we = 1;
                         next_mcycle = 8'd0;
@@ -575,7 +575,7 @@ module sm83 (
                 OP_JR: begin
                     // JR cc, emm8
                     if (mcycle == 8'd1) begin
-                        next_tmpr = i_r_data;
+                        next_tmpr[7:0] = i_r_data;
                         next_pc = pc + 16'd1;
                         o_address = pc;
                         o_re = 1;
@@ -587,7 +587,7 @@ module sm83 (
                             COND_C: next_mcycle = (flags[FLAG_C]) ? 8'd2 : 8'd0;
                         endcase
                     end else if (mcycle == 8'd2) begin
-                        next_pc = pc + 16'd1 + $signed({{8{tmpr[7]}}, tmpr});
+                        next_pc = pc + 16'd1 + $signed({{8{tmpr[7]}}, tmpr[7:0]});
                         o_address = pc;
                         o_re = 1;
                     end
@@ -775,12 +775,12 @@ module sm83 (
                             {next_flags[FLAG_Z],
                                 next_flags[FLAG_H],
                                 next_flags[FLAG_C],
-                                next_tmpr} = sub8(a, i_r_data, 0);
+                                next_tmpr[7:0]} = sub8(a, i_r_data, 0);
                         end else begin
                             {next_flags[FLAG_Z],
                                 next_flags[FLAG_H],
                                 next_flags[FLAG_C],
-                                next_tmpr} = sub8(a, get_r8(opcode[2:0]), 0);
+                                next_tmpr[7:0]} = sub8(a, get_r8(opcode[2:0]), 0);
                         end
                         next_flags[FLAG_N] = 1;
                         next_mcycle = 8'd0;
@@ -906,7 +906,7 @@ module sm83 (
                         {next_flags[FLAG_Z],
                             next_flags[FLAG_H],
                             next_flags[FLAG_C],
-                            next_tmpr} = sub8(a, i_r_data, 0);
+                            next_tmpr[7:0]} = sub8(a, i_r_data, 0);
                         next_flags[FLAG_N] = 1;
                         next_pc = pc + 16'd1;
                         next_mcycle = 8'd0;
@@ -925,13 +925,13 @@ module sm83 (
                     end else if (mcycle == 8'd2) begin
                         o_address = sp;
                         o_re = 1;
-                        next_tmpr = i_r_data;
+                        next_tmpr[7:0] = i_r_data;
                         next_sp = sp + 16'd1;
                         next_mcycle = 8'd3;
                     end else if (mcycle == 8'd3) begin
                         o_address = sp;
                         o_re = 1;
-                        next_pc = {i_r_data, tmpr};
+                        next_pc = {i_r_data, tmpr[7:0]};
                         next_sp = sp + 16'd1;
                         next_mcycle = 8'd0;
                     end
@@ -940,13 +940,13 @@ module sm83 (
                     if (mcycle == 8'd1) begin
                         o_address = sp;
                         o_re = 1;
-                        next_tmpr = i_r_data;
+                        next_tmpr[7:0] = i_r_data;
                         next_sp = sp + 16'd1;
                         next_mcycle = 8'd2;
                     end else if (mcycle == 8'd2) begin
                         o_address = sp;
                         o_re = 1;
-                        next_pc = {i_r_data, tmpr};
+                        next_pc = {i_r_data, tmpr[7:0]};
                         next_sp = sp + 16'd1;
                         next_mcycle = 8'd0;
                     end
@@ -955,27 +955,126 @@ module sm83 (
                     if (mcycle == 8'd1) begin
                         o_address = sp;
                         o_re = 1;
-                        next_tmpr = i_r_data;
+                        next_tmpr[7:0] = i_r_data;
                         next_sp = sp + 16'd1;
                         next_mcycle = 8'd2;
                     end else if (mcycle == 8'd2) begin
                         o_address = sp;
                         o_re = 1;
-                        next_pc = {i_r_data, tmpr};
+                        next_pc = {i_r_data, tmpr[7:0]};
                         next_sp = sp + 16'd1;
                         next_ime = 1;
                         next_mcycle = 8'd0;
                     end
                 end
                 OP_JP_COND: begin
+                    // JP cc, imm16
+                    if (mcycle == 8'd1) begin
+                        o_address = pc;
+                        o_re = 1;
+                        next_tmpr[7:0] = i_r_data;
+                        next_pc = pc + 16'd1;
+                        next_mcycle = 8'd2;
+                    end else if (mcycle == 8'd2) begin
+                        o_address = pc;
+                        o_re = 1;
+                        // 条件成立ならPCをジャンプ先へ
+                        if (((opcode[4:3] == COND_NZ) && (!flags[FLAG_Z]))
+                            || ((opcode[4:3] == COND_Z) && (flags[FLAG_Z]))
+                            || ((opcode[4:3] == COND_NC) && (!flags[FLAG_C]))
+                            || ((opcode[4:3] == COND_C) && (flags[FLAG_C]))) begin
+                            next_pc = {i_r_data, tmpr[7:0]};
+                        end else begin
+                            next_pc = pc + 16'd1;
+                        end
+                    end
                 end
                 OP_JP: begin
+                    // JP imm16
+                    if (mcycle == 8'd1) begin
+                        o_address = pc;
+                        o_re = 1;
+                        next_tmpr[7:0] = i_r_data;
+                        next_pc = pc + 16'd1;
+                        next_mcycle = 8'd2;
+                    end else if (mcycle == 8'd2) begin
+                        o_address = pc;
+                        o_re = 1;
+                        next_pc = {i_r_data, tmpr[7:0]};
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_JP_HL: begin
+                    // JP HL
+                    if (mcycle == 8'd1) begin
+                        next_pc = get_r16(R16_HL);
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_CALL_COND: begin
+                    // CALL cc, imm16
+                    if (mcycle == 8'd1) begin
+                        o_address = pc;
+                        o_re = 1;
+                        next_tmpr[7:0] = i_r_data;
+                        next_pc = pc + 16'd1;
+                        next_mcycle = 8'd2;
+                    end else if (mcycle == 8'd2) begin
+                        if (((opcode[4:3] == COND_NZ) && (!flags[FLAG_Z]))
+                            || ((opcode[4:3] == COND_Z) && (flags[FLAG_Z]))
+                            || ((opcode[4:3] == COND_NC) && (!flags[FLAG_C]))
+                            || ((opcode[4:3] == COND_C) && (flags[FLAG_C]))) begin
+                            o_address = pc;
+                            o_re = 1;
+                            next_tmpr = {i_r_data, tmpr[7:0]};
+                            next_mcycle = 8'd3;
+                        end else begin
+                            next_mcycle = 8'd0;
+                        end
+                        next_pc = pc + 16'd1;
+                    end else if (mcycle == 8'd3) begin
+                        o_address = sp - 16'd1;
+                        o_we = 1;
+                        o_w_data = pc[15:8];
+                        next_sp = sp - 16'd1;
+                        next_mcycle = 8'd4;
+                    end else if (mcycle == 8'd4) begin
+                        o_address = sp - 16'd1;
+                        o_we = 1;
+                        o_w_data = pc[7:0];
+                        next_sp = sp - 16'd1;
+                        next_pc = tmpr;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_CALL: begin
+                    // CALL imm16
+                    if (mcycle == 8'd1) begin
+                        o_address = pc;
+                        o_re = 1;
+                        next_tmpr[7:0] = i_r_data;
+                        next_pc = pc + 16'd1;
+                        next_mcycle = 8'd2;
+                    end else if (mcycle == 8'd2) begin
+                        o_address = pc;
+                        o_re = 1;
+                        next_tmpr = {i_r_data, tmpr[7:0]};
+                        next_pc = pc + 16'd1;
+                        next_mcycle = 8'd3;
+                    end else if (mcycle == 8'd3) begin
+                        o_address = sp - 16'd1;
+                        o_we = 1;
+                        o_w_data = pc[15:8];
+                        next_sp = sp - 16'd1;
+                        next_mcycle = 8'd4;
+                    end else if (mcycle == 8'd4) begin
+                        o_address = sp - 16'd1;
+                        o_we = 1;
+                        o_w_data = pc[7:0];
+                        next_sp = sp - 16'd1;
+                        next_pc = tmpr;
+                        next_mcycle = 8'd0;
+                    end
                 end
                 OP_RST: begin
                 end
