@@ -340,10 +340,7 @@ module sm83 (
         // フェッチ以降はマイクロコードごとに異なる
         case (op)
             OP_NOP: begin
-                if (mcycle == 8'd1) begin
-                    // 何もしない
-                    next_mcycle = 8'd0;
-                end
+                // 何もしない
             end
             OP_LD16_IMM16: begin
                 // LD r16, imm16
