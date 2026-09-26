@@ -28,7 +28,7 @@ $(BUILD_DIR):
 # 個別テスト
 test_%: $(BUILD_DIR)
 	$(VERILATOR) \
-		--lint-only -Wall --default-language 1364-2001 -Wno-MULTITOP -Wno-UNUSEDPARAM --no-sched-zero-delay \
+		--lint-only -Wall --default-language 1364-2001 -Wno-MULTITOP -Wno-UNUSEDPARAM --no-sched-zero-delay --report-unoptflat \
 		-Irtl/include \
 		-Isim/include \
 	   	-f $(FILELIST_DIR)/test_$*.f || :

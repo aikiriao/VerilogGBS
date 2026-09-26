@@ -133,7 +133,7 @@ module test_sm83;
             `ASSERT_EQ(cpu.r8_we, 0);
             `ASSERT_EQ(cpu.r8_w_data, 0);
             `ASSERT_EQ(cpu.tmpr, 0);
-            `ASSERT_EQ(cpu.next_mcycle, 1); // NOPが読み込まれて1進む
+            `ASSERT_EQ(cpu.next_mcycle, 0);
             `ASSERT_EQ(cpu.next_opcode, 0);
             `ASSERT_EQ(cpu.next_pc, 1); // NOPが読み込まれて1進む
             `ASSERT_EQ(cpu.next_flags, 0);
@@ -166,15 +166,15 @@ module test_sm83;
             `EXPECT_EQ(cpu.flags, 0);
             `EXPECT_EQ(cpu.sp, 0);
             `EXPECT_EQ(cpu.pc, 1); // PCは1進む
-            `EXPECT_EQ(cpu.mcycle, 1);
+            `EXPECT_EQ(cpu.mcycle, 0);
             `EXPECT_EQ(cpu.opcode, 0);
             `EXPECT_EQ(cpu.r8_dst, 0);
             `EXPECT_EQ(cpu.r8_we, 0);
             `EXPECT_EQ(cpu.r8_w_data, 0);
             `EXPECT_EQ(cpu.tmpr, 0);
-            `EXPECT_EQ(cpu.next_mcycle, 1);
+            `EXPECT_EQ(cpu.next_mcycle, 0);
             `EXPECT_EQ(cpu.next_opcode, 0);
-            `EXPECT_EQ(cpu.next_pc, 1); // 1進んだ状態で止まる
+            `EXPECT_EQ(cpu.next_pc, 2); // 次のNOPを読み込んでいるので2
             `EXPECT_EQ(cpu.next_flags, 0);
             `EXPECT_EQ(cpu.next_sp, 0);
             `EXPECT_EQ(cpu.next_tmpr, 0);
@@ -360,7 +360,7 @@ module test_sm83;
             memory[0] = {2'b00, dst, 4'b0011};
             sm83_set_r16(dst, initial_r16);
             
-            repeat (2) @(posedge clk);
+            repeat (1) @(posedge clk);
             @(negedge clk);
             
             `EXPECT_EQ(cpu.pc, 1); // PCは次の1を指す
@@ -438,7 +438,7 @@ module test_sm83;
             cpu.l = hl_v[7:0];
             cpu.flags[FLAG_C] = carry;
             
-            repeat (2) @(posedge clk);
+            repeat (1) @(posedge clk);
             @(negedge clk);
             
             `EXPECT_EQ(cpu.pc, 1);
@@ -483,6 +483,7 @@ module test_sm83;
         input reg [7:0] initial_value;
         input reg expected_zero;
         input reg expected_half_carry;
+        reg [15:0] hl;
 
         begin
             sm83_reset();
@@ -490,14 +491,27 @@ module test_sm83;
             // 命令を生成
             memory[0] = {2'b00, dst, 3'b100};
             // レジスタに初期値をセット
-            sm83_set_r8(dst, initial_value);
+            if (dst == R8_HL_INDIRECT) begin
+                random16(hl);
+                cpu.h = hl[15:8];
+                cpu.l = hl[7:0];
+                memory[hl] = initial_value;
+            end else begin
+                sm83_set_r8(dst, initial_value);
+            end
             
-            repeat (2) @(posedge clk);
-            @(negedge clk);
+            if (dst == R8_HL_INDIRECT) begin
+                repeat (3) @(posedge clk);
+                @(negedge clk);
+                `EXPECT_EQ(memory[hl], initial_value + 8'd1);
+            end else begin
+                repeat (1) @(posedge clk);
+                @(negedge clk);
+                `EXPECT_EQ(cpu.get_r8(dst), initial_value + 8'd1);
+            end
             
             `EXPECT_EQ(cpu.pc, 1);
             `EXPECT_EQ(cpu.flags[FLAG_N], 0);
-            `EXPECT_EQ(cpu.get_r8(dst), initial_value + 8'd1);
             `EXPECT_EQ(cpu.flags[FLAG_Z], expected_zero);
             `EXPECT_EQ(cpu.flags[FLAG_H], expected_half_carry);
         end
@@ -510,10 +524,8 @@ module test_sm83;
         begin
             // 境界値付近だけ攻める
             for (r8_dst = 0; r8_dst < 8; r8_dst = r8_dst + 1) begin
-                if (r8_dst[2:0] !== R8_HL_INDIRECT) begin
-                    sm83_inc_r8_test_sub(r8_dst[2:0], 8'h00, 0, 0);
-                    sm83_inc_r8_test_sub(r8_dst[2:0], 8'hFF, 1, 1);
-                end
+                sm83_inc_r8_test_sub(r8_dst[2:0], 8'h00, 0, 0);
+                sm83_inc_r8_test_sub(r8_dst[2:0], 8'hFF, 1, 1);
             end
         end
     endtask
@@ -524,6 +536,7 @@ module test_sm83;
         input reg [7:0] initial_value;
         input reg expected_zero;
         input reg expected_half_carry;
+        reg [15:0] hl;
 
         begin
             sm83_reset();
@@ -531,14 +544,27 @@ module test_sm83;
             // 命令を生成
             memory[0] = {2'b00, dst, 3'b101};
             // レジスタに初期値をセット
-            sm83_set_r8(dst, initial_value);
+            if (dst == R8_HL_INDIRECT) begin
+                random16(hl);
+                cpu.h = hl[15:8];
+                cpu.l = hl[7:0];
+                memory[hl] = initial_value;
+            end else begin
+                sm83_set_r8(dst, initial_value);
+            end
             
-            repeat (2) @(posedge clk);
-            @(negedge clk);
+            if (dst == R8_HL_INDIRECT) begin
+                repeat (3) @(posedge clk);
+                @(negedge clk);
+                `EXPECT_EQ(memory[hl], initial_value - 8'd1);
+            end else begin
+                repeat (1) @(posedge clk);
+                @(negedge clk);
+                `EXPECT_EQ(cpu.get_r8(dst), initial_value - 8'd1);
+            end
             
             `EXPECT_EQ(cpu.pc, 1);
             `EXPECT_EQ(cpu.flags[FLAG_N], 1);
-            `EXPECT_EQ(cpu.get_r8(dst), initial_value - 8'd1);
             `EXPECT_EQ(cpu.flags[FLAG_Z], expected_zero);
             `EXPECT_EQ(cpu.flags[FLAG_H], expected_half_carry);
         end
@@ -551,11 +577,9 @@ module test_sm83;
         begin
             // 境界値付近だけ攻める
             for (r8_dst = 0; r8_dst < 8; r8_dst = r8_dst + 1) begin
-                if (r8_dst[2:0] !== R8_HL_INDIRECT) begin
-                    sm83_dec_r8_test_sub(r8_dst[2:0], 8'h00, 0, 1);
-                    sm83_dec_r8_test_sub(r8_dst[2:0], 8'h01, 1, 0);
-                    sm83_dec_r8_test_sub(r8_dst[2:0], 8'hFF, 0, 0);
-                end
+                sm83_dec_r8_test_sub(r8_dst[2:0], 8'h00, 0, 1);
+                sm83_dec_r8_test_sub(r8_dst[2:0], 8'h01, 1, 0);
+                sm83_dec_r8_test_sub(r8_dst[2:0], 8'hFF, 0, 0);
             end
         end
     endtask
@@ -611,7 +635,7 @@ module test_sm83;
             cpu.a = initial_value;
             cpu.flags[FLAG_C] = initial_carry;
             
-            repeat (2) @(posedge clk);
+            repeat (1) @(posedge clk);
             @(negedge clk);
             
             `EXPECT_EQ(cpu.pc, 1);
@@ -648,7 +672,7 @@ module test_sm83;
             cpu.a = initial_value;
             cpu.flags[FLAG_C] = initial_carry;
             
-            repeat (2) @(posedge clk);
+            repeat (1) @(posedge clk);
             @(negedge clk);
             
             `EXPECT_EQ(cpu.pc, 1);
@@ -685,7 +709,7 @@ module test_sm83;
             cpu.a = initial_value;
             cpu.flags[FLAG_C] = initial_carry;
             
-            repeat (2) @(posedge clk);
+            repeat (1) @(posedge clk);
             @(negedge clk);
             
             `EXPECT_EQ(cpu.pc, 1);
@@ -726,7 +750,7 @@ module test_sm83;
             cpu.a = initial_value;
             cpu.flags[FLAG_C] = initial_carry;
             
-            repeat (2) @(posedge clk);
+            repeat (1) @(posedge clk);
             @(negedge clk);
             
             `EXPECT_EQ(cpu.pc, 1);
@@ -764,7 +788,7 @@ module test_sm83;
             memory[0] = 8'b00101111;
             cpu.a = initial_value;
             
-            repeat (2) @(posedge clk);
+            repeat (1) @(posedge clk);
             @(negedge clk);
             
             `EXPECT_EQ(cpu.pc, 1);
@@ -795,7 +819,7 @@ module test_sm83;
             memory[0] = 8'b00110111;
             cpu.flags[FLAG_C] = initial_carry;
             
-            repeat (2) @(posedge clk);
+            repeat (1) @(posedge clk);
             @(negedge clk);
             
             `EXPECT_EQ(cpu.pc, 1);
@@ -824,7 +848,7 @@ module test_sm83;
             memory[0] = 8'b00111111;
             cpu.flags[FLAG_C] = initial_carry;
             
-            repeat (2) @(posedge clk);
+            repeat (1) @(posedge clk);
             @(negedge clk);
             
             `EXPECT_EQ(cpu.pc, 1);
@@ -1001,7 +1025,11 @@ module test_sm83;
                 memory[imm16] = src_value;
             end
 
-            repeat (2) @(posedge clk);
+            if (src === R8_HL_INDIRECT) begin
+                repeat (2) @(posedge clk);
+            end else begin
+                repeat (1) @(posedge clk);
+            end
             @(negedge clk);
 
             `EXPECT_EQ(cpu.pc, 1);
@@ -1059,7 +1087,11 @@ module test_sm83;
                 memory[imm16] = src_value;
             end
 
-            repeat (2) @(posedge clk);
+            if (src === R8_HL_INDIRECT) begin
+                repeat (2) @(posedge clk);
+            end else begin
+                repeat (1) @(posedge clk);
+            end
             @(negedge clk);
 
             `EXPECT_EQ(cpu.pc, 1);
@@ -1115,7 +1147,11 @@ module test_sm83;
                 memory[imm16] = src_value;
             end
 
-            repeat (2) @(posedge clk);
+            if (src === R8_HL_INDIRECT) begin
+                repeat (2) @(posedge clk);
+            end else begin
+                repeat (1) @(posedge clk);
+            end
             @(negedge clk);
 
             `EXPECT_EQ(cpu.pc, 1);
@@ -1173,7 +1209,11 @@ module test_sm83;
                 memory[imm16] = src_value;
             end
 
-            repeat (2) @(posedge clk);
+            if (src === R8_HL_INDIRECT) begin
+                repeat (2) @(posedge clk);
+            end else begin
+                repeat (1) @(posedge clk);
+            end
             @(negedge clk);
 
             `EXPECT_EQ(cpu.pc, 1);
@@ -1227,7 +1267,11 @@ module test_sm83;
                 memory[imm16] = src_value;
             end
 
-            repeat (2) @(posedge clk);
+            if (src === R8_HL_INDIRECT) begin
+                repeat (2) @(posedge clk);
+            end else begin
+                repeat (1) @(posedge clk);
+            end
             @(negedge clk);
 
             `EXPECT_EQ(cpu.pc, 1);
@@ -1282,7 +1326,11 @@ module test_sm83;
                 memory[imm16] = src_value;
             end
 
-            repeat (2) @(posedge clk);
+            if (src === R8_HL_INDIRECT) begin
+                repeat (2) @(posedge clk);
+            end else begin
+                repeat (1) @(posedge clk);
+            end
             @(negedge clk);
 
             `EXPECT_EQ(cpu.pc, 1);
@@ -1337,7 +1385,11 @@ module test_sm83;
                 memory[imm16] = src_value;
             end
 
-            repeat (2) @(posedge clk);
+            if (src === R8_HL_INDIRECT) begin
+                repeat (2) @(posedge clk);
+            end else begin
+                repeat (1) @(posedge clk);
+            end
             @(negedge clk);
 
             `EXPECT_EQ(cpu.pc, 1);
@@ -1394,7 +1446,11 @@ module test_sm83;
                 memory[imm16] = src_value;
             end
 
-            repeat (2) @(posedge clk);
+            if (src === R8_HL_INDIRECT) begin
+                repeat (2) @(posedge clk);
+            end else begin
+                repeat (1) @(posedge clk);
+            end
             @(negedge clk);
 
             `EXPECT_EQ(cpu.pc, 1);
@@ -1950,7 +2006,7 @@ module test_sm83;
             cpu.h = jp_address[15:8];
             cpu.l = jp_address[7:0];
 
-            repeat (2) @(posedge clk);
+            repeat (1) @(posedge clk);
             @(negedge clk);
 
             `EXPECT_EQ(cpu.pc, jp_address);
@@ -2398,7 +2454,7 @@ module test_sm83;
             random16(initial_hl);
             sm83_set_r16(R16_HL, initial_hl);
 
-            repeat (2) @(posedge clk);
+            repeat (1) @(posedge clk);
             @(negedge clk);
             
             `EXPECT_EQ(cpu.pc, 1);
@@ -2427,7 +2483,7 @@ module test_sm83;
             memory[0] = 8'b11110011;
             cpu.ime = initial_ime;
 
-            repeat (2) @(posedge clk);
+            repeat (1) @(posedge clk);
             @(negedge clk);
             
             `EXPECT_EQ(cpu.pc, 1);
@@ -2453,7 +2509,7 @@ module test_sm83;
             memory[0] = 8'b11111011;
             cpu.ime = initial_ime;
 
-            repeat (2) @(posedge clk);
+            repeat (1) @(posedge clk);
             @(negedge clk);
             
             `EXPECT_EQ(cpu.pc, 1);
@@ -3076,10 +3132,10 @@ module test_sm83;
         sm83_ld16_imm16_test();
         sm83_ld_a_to_indirect_test();
         sm83_ld_indirect_to_a_test();
-        sm83_ld16_sp_to_imm16_test();
         sm83_inc_r16_test();
         sm83_dec_r16_test();
         sm83_add16_test();
+        sm83_ld16_sp_to_imm16_test();
         sm83_inc_r8_test();
         sm83_dec_r8_test();
         sm83_ld_r8_imm8_test();
