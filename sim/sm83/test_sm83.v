@@ -2183,7 +2183,7 @@ module test_sm83;
             endcase
 
             // PUSHを実行
-            repeat (3) @(posedge clk);
+            repeat (4) @(posedge clk);
             @(negedge clk);
 
             `EXPECT_EQ(cpu.pc, 1);

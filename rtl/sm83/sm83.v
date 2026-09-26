@@ -148,7 +148,7 @@ module sm83 (
             8'b00??0001: decode_opcode = OP_LD16_IMM16;
             8'b00??0010: decode_opcode = OP_LD_A_TO_INDIRECT;
             8'b00??1010: decode_opcode = OP_LD_INDIRECT_TO_A;
-            8'b00001000: decode_opcode = OP_LD16_SP_TO_IMM16;
+            8'b00001000: decode_opcode = OP_LD16_SP_TO_IMM16_DIRECT;
             8'b00??0011: decode_opcode = OP_INC16;
             8'b00??1011: decode_opcode = OP_DEC16;
             8'b00??1001: decode_opcode = OP_ADD16;
@@ -203,7 +203,7 @@ module sm83 (
             8'b11001011: decode_opcode = OP_PREFIX;
             8'b111?0010: decode_opcode = OP_LDH;
             8'b111?0000: decode_opcode = OP_LDH_IMM8;
-            8'b111?1010: decode_opcode = OP_LD_IMM16;
+            8'b111?1010: decode_opcode = OP_LD_IMM16_DIRECT;
             8'b11101000: decode_opcode = OP_ADD_SP;
             8'b11111000: decode_opcode = OP_LD_HL_SP_IMM8;
             8'b11111001: decode_opcode = OP_LD_SP_HL;
@@ -350,14 +350,14 @@ module sm83 (
                     r16_w_data = get_r16(fetch_opcode[5:4]) + 16'd1;
                     r16_dst = fetch_opcode[5:4];
                     r16_we = 1;
-                    next_mcycle = 8'd0;
+                    next_mcycle = 8'd1;
                 end
                 OP_DEC16: begin
                     // DEC r16
                     r16_w_data = get_r16(fetch_opcode[5:4]) - 16'd1;
                     r16_dst = fetch_opcode[5:4];
                     r16_we = 1;
-                    next_mcycle = 8'd0;
+                    next_mcycle = 8'd1;
                 end
                 OP_ADD16: begin
                     // ADD HL, r16
@@ -368,7 +368,7 @@ module sm83 (
                     next_flags[FLAG_N] = 0;
                     r16_dst = R16_HL;
                     r16_we = 1;
-                    next_mcycle = 8'd0;
+                    next_mcycle = 8'd1;
                 end
                 OP_INC: begin
                     // INC r8
@@ -457,6 +457,9 @@ module sm83 (
                     next_flags[FLAG_N] = 0;
                     next_flags[FLAG_H] = 0;
                     next_mcycle = 8'd0;
+                end
+                OP_DAA: begin
+                    // TODO: 何もしない
                 end
                 OP_CCF: begin
                     // CCF
@@ -593,7 +596,7 @@ module sm83 (
                 OP_LD_SP_HL: begin
                     // LD SP, HL
                     next_sp = get_r16(R16_HL);
-                    next_mcycle = 8'd0;
+                    next_mcycle = 8'd1; // NOTE: 既に処理は終わっているが2サイクルに合わせる
                 end
                 OP_DI: begin
                     // DI
@@ -685,7 +688,7 @@ module sm83 (
                         next_mcycle = 8'd0;
                     end
                 end
-                OP_LD16_SP_TO_IMM16: begin
+                OP_LD16_SP_TO_IMM16_DIRECT: begin
                     // LD [imm16], SP
                     if (mcycle == 8'd1) begin
                         o_address = pc;
@@ -708,6 +711,24 @@ module sm83 (
                         o_address = tmpr + 16'd1;
                         o_we = 1;
                         o_w_data = sp[15:8];
+                        next_mcycle = 8'd0;
+                    end
+                end
+                OP_INC16: begin
+                    // NOTE: 既に処理は終わっているがサイクルを合わせる
+                    if (mcycle == 8'd1) begin
+                        next_mcycle = 8'd0;
+                    end
+                end
+                OP_DEC16: begin
+                    // NOTE: 既に処理は終わっているがサイクルを合わせる
+                    if (mcycle == 8'd1) begin
+                        next_mcycle = 8'd0;
+                    end
+                end
+                OP_ADD16: begin
+                    // NOTE: 既に処理は終わっているがサイクルを合わせる
+                    if (mcycle == 8'd1) begin
                         next_mcycle = 8'd0;
                     end
                 end
@@ -760,9 +781,6 @@ module sm83 (
                         next_pc = pc + 16'd1;
                         next_mcycle = 8'd0;
                     end
-                end
-                OP_DAA: begin
-                    // TODO
                 end
                 OP_JR_NOCOND: begin
                     // JR emm8
@@ -1280,6 +1298,9 @@ module sm83 (
                             R16STK_AF: o_w_data = flags;
                         endcase
                         next_sp = sp - 16'd1;
+                        next_mcycle = 8'd3;
+                    end else if (mcycle == 8'd3) begin
+                        // NOTE: 既に処理は終わっているがサイクルを合わせる
                         next_mcycle = 8'd0;
                     end
                 end
@@ -1348,7 +1369,7 @@ module sm83 (
                         end
                     end
                 end
-                OP_LD_IMM16: begin
+                OP_LD_IMM16_DIRECT: begin
                     if (opcode[4]) begin
                         // LD A, [imm16]
                         if (mcycle == 8'd1) begin
@@ -1407,6 +1428,12 @@ module sm83 (
                         next_flags[FLAG_Z] = 0;
                         next_flags[FLAG_N] = 0;
                         next_pc = pc + 16'd1;
+                        next_mcycle = 8'd2;
+                    end else if (mcycle == 8'd2) begin
+                        // NOTE: 何もしない。サイクル数を揃える
+                        next_mcycle = 8'd3;
+                    end else if (mcycle == 8'd3) begin
+                        // NOTE: 何もしない。サイクル数を揃える
                         next_mcycle = 8'd0;
                     end
                 end
@@ -1426,7 +1453,16 @@ module sm83 (
                         next_flags[FLAG_Z] = 0;
                         next_flags[FLAG_N] = 0;
                         next_pc = pc + 16'd1;
+                        next_mcycle = 8'd2;
+                    end else if (mcycle == 8'd2) begin
+                        // NOTE: 何もしない。サイクル数を揃える
                         next_mcycle = 8'd0;
+                    end
+                end
+                OP_LD_SP_HL: begin
+                    // LD SP, HL
+                    if (mcycle == 8'd1) begin
+                        next_mcycle = 8'd0; // NOTE: 1サイクル目で処理は終わっている
                     end
                 end
                 OP_RLC: begin
