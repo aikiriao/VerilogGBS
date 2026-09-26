@@ -785,31 +785,34 @@ module sm83 (
                 OP_JR_NOCOND: begin
                     // JR emm8
                     if (mcycle == 8'd1) begin
-                        // 符号拡張して符号付き加算
-                        next_pc = pc + 16'd1 + $signed({{8{i_r_data[7]}}, i_r_data});
                         o_address = pc;
                         o_re = 1;
+                        // 符号拡張して符号付き加算
+                        next_pc = pc + 16'd1 + $signed({{8{i_r_data[7]}}, i_r_data});
+                        next_mcycle = 8'd2;
+                    end else if (mcycle == 8'd2) begin
+                        // NOTE: 既に処理は終わっているがサイクルを合わせる
                         next_mcycle = 8'd0;
                     end
                 end
                 OP_JR: begin
                     // JR cc, emm8
                     if (mcycle == 8'd1) begin
+                        o_address = pc;
+                        o_re = 1;
                         next_tmpr[7:0] = i_r_data;
                         next_pc = pc + 16'd1;
-                        o_address = pc;
-                        o_re = 1;
-                        // 条件成立なら次のサイクルへ。未成立なら終了し次の命令へ
-                        case (opcode[4:3]) 
-                            COND_NZ: next_mcycle = (!flags[FLAG_Z]) ? 8'd2 : 8'd0;
-                            COND_Z: next_mcycle = (flags[FLAG_Z]) ? 8'd2 : 8'd0;
-                            COND_NC: next_mcycle = (!flags[FLAG_C]) ? 8'd2 : 8'd0;
-                            COND_C: next_mcycle = (flags[FLAG_C]) ? 8'd2 : 8'd0;
-                        endcase
+                        if (((opcode[4:3] == COND_NZ) && (!flags[FLAG_Z]))
+                            || ((opcode[4:3] == COND_Z) && (flags[FLAG_Z]))
+                            || ((opcode[4:3] == COND_NC) && (!flags[FLAG_C]))
+                            || ((opcode[4:3] == COND_C) && (flags[FLAG_C]))) begin
+                            next_mcycle = 8'd2;
+                        end else begin
+                            next_mcycle = 8'd0;
+                        end
                     end else if (mcycle == 8'd2) begin
-                        next_pc = pc + 16'd1 + $signed({{8{tmpr[7]}}, tmpr[7:0]});
-                        o_address = pc;
-                        o_re = 1;
+                        next_pc = pc + $signed({{8{tmpr[7]}}, tmpr[7:0]});
+                        next_mcycle = 8'd0;
                     end
                 end
                 OP_LD: begin
@@ -1104,6 +1107,9 @@ module sm83 (
                         o_re = 1;
                         next_pc = {i_r_data, tmpr[7:0]};
                         next_sp = sp + 16'd1;
+                        next_mcycle = 8'd4;
+                    end else if (mcycle == 8'd4) begin
+                        // NOTE: 既に処理は終わっているがサイクルを合わせる
                         next_mcycle = 8'd0;
                     end
                 end
@@ -1119,6 +1125,9 @@ module sm83 (
                         o_re = 1;
                         next_pc = {i_r_data, tmpr[7:0]};
                         next_sp = sp + 16'd1;
+                        next_mcycle = 8'd3;
+                    end else if (mcycle == 8'd3) begin
+                        // NOTE: 既に処理は終わっているがサイクルを合わせる
                         next_mcycle = 8'd0;
                     end
                 end
@@ -1135,6 +1144,9 @@ module sm83 (
                         next_pc = {i_r_data, tmpr[7:0]};
                         next_sp = sp + 16'd1;
                         next_ime = 1;
+                        next_mcycle = 8'd3;
+                    end else if (mcycle == 8'd3) begin
+                        // NOTE: 既に処理は終わっているがサイクルを合わせる
                         next_mcycle = 8'd0;
                     end
                 end
@@ -1155,9 +1167,15 @@ module sm83 (
                             || ((opcode[4:3] == COND_NC) && (!flags[FLAG_C]))
                             || ((opcode[4:3] == COND_C) && (flags[FLAG_C]))) begin
                             next_pc = {i_r_data, tmpr[7:0]};
+                            next_mcycle = 8'd3;
                         end else begin
+                            // 条件不成立ならばここで終わり
                             next_pc = pc + 16'd1;
+                            next_mcycle = 8'd0;
                         end
+                    end else if (mcycle == 8'd3) begin
+                        // NOTE: 既に処理は終わっているがサイクルを合わせる
+                        next_mcycle = 8'd0;
                     end
                 end
                 OP_JP: begin
@@ -1172,6 +1190,9 @@ module sm83 (
                         o_address = pc;
                         o_re = 1;
                         next_pc = {i_r_data, tmpr[7:0]};
+                        next_mcycle = 8'd3;
+                    end else if (mcycle == 8'd3) begin
+                        // NOTE: 既に処理は終わっているがサイクルを合わせる
                         next_mcycle = 8'd0;
                     end
                 end
@@ -1208,6 +1229,9 @@ module sm83 (
                         o_w_data = pc[7:0];
                         next_sp = sp - 16'd1;
                         next_pc = tmpr;
+                        next_mcycle = 8'd5;
+                    end else if (mcycle == 8'd5) begin
+                        // NOTE: 既に処理は終わっているがサイクルを合わせる
                         next_mcycle = 8'd0;
                     end
                 end
@@ -1237,6 +1261,9 @@ module sm83 (
                         o_w_data = pc[7:0];
                         next_sp = sp - 16'd1;
                         next_pc = tmpr;
+                        next_mcycle = 8'd5;
+                    end else if (mcycle == 8'd5) begin
+                        // NOTE: 既に処理は終わっているがサイクルを合わせる
                         next_mcycle = 8'd0;
                     end
                 end
@@ -1254,6 +1281,9 @@ module sm83 (
                         o_w_data = pc[7:0];
                         next_sp = sp - 16'd1;
                         next_pc = {10'd0, opcode[5:3], 3'b000};
+                        next_mcycle = 8'd3;
+                    end else if (mcycle == 8'd3) begin
+                        // NOTE: 既に処理は終わっているがサイクルを合わせる
                         next_mcycle = 8'd0;
                     end
                 end
@@ -1808,7 +1838,8 @@ module sm83 (
                     end
                 end
                 default: begin
-                    // TODO
+                    // TODO: 未実装。PCを止める
+                    next_pc = pc;
                 end
             endcase
         end

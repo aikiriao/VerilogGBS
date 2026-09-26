@@ -880,7 +880,7 @@ module test_sm83;
             memory[1] = relative_pc;
             cpu.pc = initial_pc;
 
-            repeat (2) @(posedge clk);
+            repeat (3) @(posedge clk);
             @(negedge clk);
             
             `EXPECT_EQ(cpu.pc, expected_pc);
@@ -904,7 +904,7 @@ module test_sm83;
     // JRのテスト
     task automatic sm83_jr_test_sub;
         input reg [1:0] cond;
-        input reg [7:0] flags;
+        input reg flag;
         input reg [15:0] initial_pc;
         input reg signed [7:0] relative_pc;
         input reg [15:0] expected_pc;
@@ -916,9 +916,18 @@ module test_sm83;
             memory[0] = {3'b001, cond, 3'b000};
             memory[1] = relative_pc;
             cpu.pc = initial_pc;
-            cpu.flags = flags;
+            case (cond) 
+                COND_NZ: cpu.flags[FLAG_Z] = ~flag;
+                COND_Z: cpu.flags[FLAG_Z] = flag;
+                COND_NC: cpu.flags[FLAG_C] = ~flag;
+                COND_C: cpu.flags[FLAG_C] = flag;
+            endcase
 
-            repeat (3) @(posedge clk);
+            if (flag) begin
+                repeat (3) @(posedge clk);
+            end else begin
+                repeat (2) @(posedge clk);
+            end
             @(negedge clk);
             
             `EXPECT_EQ(cpu.pc, expected_pc);
@@ -928,14 +937,14 @@ module test_sm83;
     // JRのテスト
     task automatic sm83_jr_test;
         begin
-            sm83_jr_test_sub(COND_NZ, 8'h00, 16'h0000, 1, 16'h0004);
-            sm83_jr_test_sub(COND_NZ, 8'h80, 16'h0000, 1, 16'h0003);
-            sm83_jr_test_sub( COND_Z, 8'h00, 16'h0000, 1, 16'h0003);
-            sm83_jr_test_sub( COND_Z, 8'h80, 16'h0000, 1, 16'h0004);
-            sm83_jr_test_sub(COND_NC, 8'h00, 16'h0000, 1, 16'h0004);
-            sm83_jr_test_sub(COND_NC, 8'h10, 16'h0000, 1, 16'h0003);
-            sm83_jr_test_sub( COND_C, 8'h00, 16'h0000, 1, 16'h0003);
-            sm83_jr_test_sub( COND_C, 8'h10, 16'h0000, 1, 16'h0004);
+            sm83_jr_test_sub(COND_NZ, 0, 16'h0000, 1, 16'h0002);
+            sm83_jr_test_sub(COND_NZ, 1, 16'h0000, 1, 16'h0003);
+            sm83_jr_test_sub( COND_Z, 0, 16'h0000, 1, 16'h0002);
+            sm83_jr_test_sub( COND_Z, 1, 16'h0000, 1, 16'h0003);
+            sm83_jr_test_sub(COND_NC, 0, 16'h0000, 1, 16'h0002);
+            sm83_jr_test_sub(COND_NC, 1, 16'h0000, 1, 16'h0003);
+            sm83_jr_test_sub( COND_C, 0, 16'h0000, 1, 16'h0002);
+            sm83_jr_test_sub( COND_C, 1, 16'h0000, 1, 16'h0003);
         end
     endtask
 
@@ -1810,7 +1819,7 @@ module test_sm83;
             endcase
 
             if (flag) begin
-                repeat (4) @(posedge clk);
+                repeat (5) @(posedge clk);
                 @(negedge clk);
 
                 `EXPECT_EQ(cpu.pc, ret_address);
@@ -1856,7 +1865,7 @@ module test_sm83;
             memory[initial_sp + 1] = ret_address[15:8];
             cpu.sp = initial_sp;
 
-            repeat (3) @(posedge clk);
+            repeat (4) @(posedge clk);
             @(negedge clk);
 
             `EXPECT_EQ(cpu.pc, ret_address);
@@ -1892,7 +1901,7 @@ module test_sm83;
             memory[initial_sp + 1] = ret_address[15:8];
             cpu.sp = initial_sp;
 
-            repeat (3) @(posedge clk);
+            repeat (4) @(posedge clk);
             @(negedge clk);
 
             `EXPECT_EQ(cpu.pc, ret_address);
@@ -1935,7 +1944,11 @@ module test_sm83;
                 COND_C: cpu.flags[FLAG_C] = flag;
             endcase
 
-            repeat (3) @(posedge clk);
+            if (flag) begin
+                repeat (4) @(posedge clk);
+            end else begin
+                repeat (3) @(posedge clk);
+            end
             @(negedge clk);
 
             if (flag) begin
@@ -1974,7 +1987,7 @@ module test_sm83;
             memory[1] = jp_address[7:0];
             memory[2] = jp_address[15:8];
 
-            repeat (3) @(posedge clk);
+            repeat (4) @(posedge clk);
             @(negedge clk);
 
             `EXPECT_EQ(cpu.pc, jp_address);
@@ -2051,7 +2064,7 @@ module test_sm83;
             endcase
 
             if (flag) begin
-                repeat (5) @(posedge clk);
+                repeat (6) @(posedge clk);
                 @(negedge clk);
                 `EXPECT_EQ(cpu.pc, jp_address);
                 `EXPECT_EQ(memory[sp_address - 16'd1], 0);
@@ -2097,7 +2110,7 @@ module test_sm83;
             memory[2] = jp_address[15:8];
             cpu.sp = sp_address;
 
-            repeat (5) @(posedge clk);
+            repeat (6) @(posedge clk);
             @(negedge clk);
 
             `EXPECT_EQ(cpu.pc, jp_address);
@@ -2135,7 +2148,7 @@ module test_sm83;
             cpu.pc = initial_pc;
             cpu.sp = initial_sp;
 
-            repeat (3) @(posedge clk);
+            repeat (4) @(posedge clk);
             @(negedge clk);
 
             initial_pc = initial_pc + 16'd1;
