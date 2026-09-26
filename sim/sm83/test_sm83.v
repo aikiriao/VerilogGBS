@@ -172,7 +172,7 @@ module test_sm83;
             `EXPECT_EQ(cpu.r8_we, 0);
             `EXPECT_EQ(cpu.r8_w_data, 0);
             `EXPECT_EQ(cpu.tmpr, 0);
-            `EXPECT_EQ(cpu.next_mcycle, 0);
+            `EXPECT_EQ(cpu.next_mcycle, 1);
             `EXPECT_EQ(cpu.next_opcode, 0);
             `EXPECT_EQ(cpu.next_pc, 1); // 1進んだ状態で止まる
             `EXPECT_EQ(cpu.next_flags, 0);
