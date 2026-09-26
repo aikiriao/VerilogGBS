@@ -1310,9 +1310,157 @@ module sm83 (
                         o_address = pc;
                         o_re = 1;
                         next_op = decode_prefix_opcode(i_r_data);
-                        next_opcode = i_r_data;
+                        next_opcode = fetch_opcode;
                         next_pc = pc + 16'd1;
-                        next_mcycle = 8'd1; // もう一度1サイクル目から実行
+                        next_mcycle = 8'd2;
+                        // プレフィックス命令のうち命令デコードと同時に実行する命令
+                        case (next_op)
+                            OP_RLC: begin
+                                // RLC
+                                if (fetch_opcode[2:0] != R8_HL_INDIRECT) begin
+                                    next_tmpr[7:0] = get_r8(fetch_opcode[2:0]);
+                                    r8_w_data = {next_tmpr[6:0], next_tmpr[7]};
+                                    r8_dst = fetch_opcode[2:0];
+                                    r8_we = 1;
+                                    next_flags[FLAG_Z] = (r8_w_data == 0);
+                                    next_flags[FLAG_N] = 0;
+                                    next_flags[FLAG_H] = 0;
+                                    next_flags[FLAG_C] = next_tmpr[7];
+                                    next_mcycle = 8'd0;
+                                end
+                            end
+                            OP_RRC: begin
+                                // RRC
+                                if (fetch_opcode[2:0] != R8_HL_INDIRECT) begin
+                                    next_tmpr[7:0] = get_r8(fetch_opcode[2:0]);
+                                    r8_w_data = {next_tmpr[0], next_tmpr[7:1]};
+                                    r8_dst = fetch_opcode[2:0];
+                                    r8_we = 1;
+                                    next_flags[FLAG_Z] = (r8_w_data == 0);
+                                    next_flags[FLAG_N] = 0;
+                                    next_flags[FLAG_H] = 0;
+                                    next_flags[FLAG_C] = next_tmpr[0];
+                                    next_mcycle = 8'd0;
+                                end
+                            end
+                            OP_RL: begin
+                                // RL
+                                if (fetch_opcode[2:0] != R8_HL_INDIRECT) begin
+                                    next_tmpr[7:0] = get_r8(fetch_opcode[2:0]);
+                                    r8_w_data = {next_tmpr[6:0], flags[FLAG_C]};
+                                    r8_dst = fetch_opcode[2:0];
+                                    r8_we = 1;
+                                    next_flags[FLAG_Z] = (r8_w_data == 0);
+                                    next_flags[FLAG_N] = 0;
+                                    next_flags[FLAG_H] = 0;
+                                    next_flags[FLAG_C] = next_tmpr[7];
+                                    next_mcycle = 8'd0;
+                                end
+                            end
+                            OP_RR: begin
+                                // RR
+                                if (fetch_opcode[2:0] != R8_HL_INDIRECT) begin
+                                    next_tmpr[7:0] = get_r8(fetch_opcode[2:0]);
+                                    r8_w_data = {flags[FLAG_C], next_tmpr[7:1]};
+                                    r8_dst = fetch_opcode[2:0];
+                                    r8_we = 1;
+                                    next_flags[FLAG_Z] = (r8_w_data == 0);
+                                    next_flags[FLAG_N] = 0;
+                                    next_flags[FLAG_H] = 0;
+                                    next_flags[FLAG_C] = next_tmpr[0];
+                                    next_mcycle = 8'd0;
+                                end
+                            end
+                            OP_SLA: begin
+                                // SLA
+                                if (fetch_opcode[2:0] != R8_HL_INDIRECT) begin
+                                    next_tmpr[7:0] = get_r8(fetch_opcode[2:0]);
+                                    r8_w_data = {next_tmpr[6:0], 1'b0};
+                                    r8_dst = fetch_opcode[2:0];
+                                    r8_we = 1;
+                                    next_flags[FLAG_Z] = (r8_w_data == 0);
+                                    next_flags[FLAG_N] = 0;
+                                    next_flags[FLAG_H] = 0;
+                                    next_flags[FLAG_C] = next_tmpr[7];
+                                    next_mcycle = 8'd0;
+                                end
+                            end
+                            OP_SRA: begin
+                                // SRA
+                                if (fetch_opcode[2:0] != R8_HL_INDIRECT) begin
+                                    next_tmpr[7:0] = get_r8(fetch_opcode[2:0]);
+                                    r8_w_data = {next_tmpr[7], next_tmpr[7:1]};
+                                    r8_dst = fetch_opcode[2:0];
+                                    r8_we = 1;
+                                    next_flags[FLAG_Z] = (r8_w_data == 0);
+                                    next_flags[FLAG_N] = 0;
+                                    next_flags[FLAG_H] = 0;
+                                    next_flags[FLAG_C] = next_tmpr[0];
+                                    next_mcycle = 8'd0;
+                                end
+                            end
+                            OP_SWAP: begin
+                                // SWAP
+                                if (fetch_opcode[2:0] != R8_HL_INDIRECT) begin
+                                    next_tmpr[7:0] = get_r8(fetch_opcode[2:0]);
+                                    r8_w_data = {next_tmpr[3:0], next_tmpr[7:4]};
+                                    r8_dst = fetch_opcode[2:0];
+                                    r8_we = 1;
+                                    next_flags[FLAG_Z] = (r8_w_data == 0);
+                                    next_flags[FLAG_N] = 0;
+                                    next_flags[FLAG_H] = 0;
+                                    next_flags[FLAG_C] = 0;
+                                    next_mcycle = 8'd0;
+                                end
+                            end
+                            OP_SRL: begin
+                                // SRL
+                                if (fetch_opcode[2:0] != R8_HL_INDIRECT) begin
+                                    next_tmpr[7:0] = get_r8(fetch_opcode[2:0]);
+                                    r8_w_data = {1'b0, next_tmpr[7:1]};
+                                    r8_dst = fetch_opcode[2:0];
+                                    r8_we = 1;
+                                    next_flags[FLAG_Z] = (r8_w_data == 0);
+                                    next_flags[FLAG_N] = 0;
+                                    next_flags[FLAG_H] = 0;
+                                    next_flags[FLAG_C] = next_tmpr[0];
+                                    next_mcycle = 8'd0;
+                                end
+                            end
+                            OP_BIT: begin
+                                // BIT
+                                if (fetch_opcode[2:0] != R8_HL_INDIRECT) begin
+                                    next_tmpr[7:0] = get_r8(fetch_opcode[2:0]);
+                                    next_flags[FLAG_Z] = ~next_tmpr[{1'b0, fetch_opcode[5:3]}];
+                                    next_flags[FLAG_N] = 0;
+                                    next_flags[FLAG_H] = 1;
+                                    next_mcycle = 8'd0;
+                                end
+                            end
+                            OP_RES: begin
+                                // RES
+                                if (fetch_opcode[2:0] != R8_HL_INDIRECT) begin
+                                    next_tmpr[7:0] = get_r8(fetch_opcode[2:0]);
+                                    r8_w_data = next_tmpr[7:0] & ~(8'd1 << fetch_opcode[5:3]);
+                                    r8_dst = fetch_opcode[2:0];
+                                    r8_we = 1;
+                                    next_mcycle = 8'd0;
+                                end
+                            end
+                            OP_SET: begin
+                                // SET
+                                if (fetch_opcode[2:0] != R8_HL_INDIRECT) begin
+                                    next_tmpr[7:0] = get_r8(fetch_opcode[2:0]);
+                                    r8_w_data = next_tmpr[7:0] | (8'd1 << fetch_opcode[5:3]);
+                                    r8_dst = fetch_opcode[2:0];
+                                    r8_we = 1;
+                                    next_mcycle = 8'd0;
+                                end
+                            end
+                            default: begin
+                                // 何もしない
+                            end
+                        endcase
                     end
                 end
                 OP_LDH: begin
@@ -1466,328 +1614,197 @@ module sm83 (
                     end
                 end
                 OP_RLC: begin
-                    // RLC
-                    if (opcode[2:0] == R8_HL_INDIRECT) begin
-                        if (mcycle == 8'd1) begin
-                            o_address = get_r16(R16_HL);
-                            o_re = 1;
-                            next_tmpr[7:0] = {i_r_data[6:0], i_r_data[7]};
-                            next_flags[FLAG_Z] = (next_tmpr == 0);
-                            next_flags[FLAG_N] = 0;
-                            next_flags[FLAG_H] = 0;
-                            next_flags[FLAG_C] = i_r_data[7];
-                            next_mcycle = 8'd2;
-                        end else if (mcycle == 8'd2) begin
-                            o_address = get_r16(R16_HL);
-                            o_we = 1;
-                            o_w_data = tmpr[7:0];
-                            next_mcycle = 8'd0;
-                        end
-                    end else begin
-                        if (mcycle == 8'd1) begin
-                            next_tmpr[7:0] = get_r8(opcode[2:0]);
-                            r8_w_data = {next_tmpr[6:0], next_tmpr[7]};
-                            r8_dst = opcode[2:0];
-                            r8_we = 1;
-                            next_flags[FLAG_Z] = (r8_w_data == 0);
-                            next_flags[FLAG_N] = 0;
-                            next_flags[FLAG_H] = 0;
-                            next_flags[FLAG_C] = next_tmpr[7];
-                            next_mcycle = 8'd0;
-                        end
+                    // RLC [HL]
+                    // NOTE: RLC r8は2サイクル目で終わっている
+                    if (mcycle == 8'd2) begin
+                        o_address = get_r16(R16_HL);
+                        o_re = 1;
+                        next_tmpr[7:0] = {i_r_data[6:0], i_r_data[7]};
+                        next_flags[FLAG_Z] = (next_tmpr == 0);
+                        next_flags[FLAG_N] = 0;
+                        next_flags[FLAG_H] = 0;
+                        next_flags[FLAG_C] = i_r_data[7];
+                        next_mcycle = 8'd3;
+                    end else if (mcycle == 8'd3) begin
+                        o_address = get_r16(R16_HL);
+                        o_we = 1;
+                        o_w_data = tmpr[7:0];
+                        next_mcycle = 8'd0;
                     end
                 end
                 OP_RRC: begin
-                    // RRC
-                    if (opcode[2:0] == R8_HL_INDIRECT) begin
-                        if (mcycle == 8'd1) begin
-                            o_address = get_r16(R16_HL);
-                            o_re = 1;
-                            next_tmpr[7:0] = {i_r_data[0], i_r_data[7:1]};
-                            next_flags[FLAG_Z] = (next_tmpr == 0);
-                            next_flags[FLAG_N] = 0;
-                            next_flags[FLAG_H] = 0;
-                            next_flags[FLAG_C] = i_r_data[0];
-                            next_mcycle = 8'd2;
-                        end else if (mcycle == 8'd2) begin
-                            o_address = get_r16(R16_HL);
-                            o_we = 1;
-                            o_w_data = tmpr[7:0];
-                            next_mcycle = 8'd0;
-                        end
-                    end else begin
-                        if (mcycle == 8'd1) begin
-                            next_tmpr[7:0] = get_r8(opcode[2:0]);
-                            r8_w_data = {next_tmpr[0], next_tmpr[7:1]};
-                            r8_dst = opcode[2:0];
-                            r8_we = 1;
-                            next_flags[FLAG_Z] = (r8_w_data == 0);
-                            next_flags[FLAG_N] = 0;
-                            next_flags[FLAG_H] = 0;
-                            next_flags[FLAG_C] = next_tmpr[0];
-                            next_mcycle = 8'd0;
-                        end
+                    // RRC [HL]
+                    // NOTE: RRC r8は2サイクル目で終わっている
+                    if (mcycle == 8'd2) begin
+                        o_address = get_r16(R16_HL);
+                        o_re = 1;
+                        next_tmpr[7:0] = {i_r_data[0], i_r_data[7:1]};
+                        next_flags[FLAG_Z] = (next_tmpr == 0);
+                        next_flags[FLAG_N] = 0;
+                        next_flags[FLAG_H] = 0;
+                        next_flags[FLAG_C] = i_r_data[0];
+                        next_mcycle = 8'd3;
+                    end else if (mcycle == 8'd3) begin
+                        o_address = get_r16(R16_HL);
+                        o_we = 1;
+                        o_w_data = tmpr[7:0];
+                        next_mcycle = 8'd0;
                     end
                 end
                 OP_RL: begin
-                    // RL
-                    if (opcode[2:0] == R8_HL_INDIRECT) begin
-                        if (mcycle == 8'd1) begin
-                            o_address = get_r16(R16_HL);
-                            o_re = 1;
-                            next_tmpr[7:0] = {i_r_data[6:0], flags[FLAG_C]};
-                            next_flags[FLAG_Z] = (next_tmpr == 0);
-                            next_flags[FLAG_N] = 0;
-                            next_flags[FLAG_H] = 0;
-                            next_flags[FLAG_C] = i_r_data[7];
-                            next_mcycle = 8'd2;
-                        end else if (mcycle == 8'd2) begin
-                            o_address = get_r16(R16_HL);
-                            o_we = 1;
-                            o_w_data = tmpr[7:0];
-                            next_mcycle = 8'd0;
-                        end
-                    end else begin
-                        if (mcycle == 8'd1) begin
-                            next_tmpr[7:0] = get_r8(opcode[2:0]);
-                            r8_w_data = {next_tmpr[6:0], flags[FLAG_C]};
-                            r8_dst = opcode[2:0];
-                            r8_we = 1;
-                            next_flags[FLAG_Z] = (r8_w_data == 0);
-                            next_flags[FLAG_N] = 0;
-                            next_flags[FLAG_H] = 0;
-                            next_flags[FLAG_C] = next_tmpr[7];
-                            next_mcycle = 8'd0;
-                        end
+                    // RL [HL]
+                    // NOTE: RL r8は2サイクル目で終わっている
+                    if (mcycle == 8'd2) begin
+                        o_address = get_r16(R16_HL);
+                        o_re = 1;
+                        next_tmpr[7:0] = {i_r_data[6:0], flags[FLAG_C]};
+                        next_flags[FLAG_Z] = (next_tmpr == 0);
+                        next_flags[FLAG_N] = 0;
+                        next_flags[FLAG_H] = 0;
+                        next_flags[FLAG_C] = i_r_data[7];
+                        next_mcycle = 8'd3;
+                    end else if (mcycle == 8'd3) begin
+                        o_address = get_r16(R16_HL);
+                        o_we = 1;
+                        o_w_data = tmpr[7:0];
+                        next_mcycle = 8'd0;
                     end
                 end
                 OP_RR: begin
-                    // RR
-                    if (opcode[2:0] == R8_HL_INDIRECT) begin
-                        if (mcycle == 8'd1) begin
-                            o_address = get_r16(R16_HL);
-                            o_re = 1;
-                            next_tmpr[7:0] = {flags[FLAG_C], i_r_data[7:1]};
-                            next_flags[FLAG_Z] = (next_tmpr == 0);
-                            next_flags[FLAG_N] = 0;
-                            next_flags[FLAG_H] = 0;
-                            next_flags[FLAG_C] = i_r_data[0];
-                            next_mcycle = 8'd2;
-                        end else if (mcycle == 8'd2) begin
-                            o_address = get_r16(R16_HL);
-                            o_we = 1;
-                            o_w_data = tmpr[7:0];
-                            next_mcycle = 8'd0;
-                        end
-                    end else begin
-                        if (mcycle == 8'd1) begin
-                            next_tmpr[7:0] = get_r8(opcode[2:0]);
-                            r8_w_data = {flags[FLAG_C], next_tmpr[7:1]};
-                            r8_dst = opcode[2:0];
-                            r8_we = 1;
-                            next_flags[FLAG_Z] = (r8_w_data == 0);
-                            next_flags[FLAG_N] = 0;
-                            next_flags[FLAG_H] = 0;
-                            next_flags[FLAG_C] = next_tmpr[0];
-                            next_mcycle = 8'd0;
-                        end
+                    // RR [HL]
+                    // NOTE: RR r8は2サイクル目で終わっている
+                    if (mcycle == 8'd2) begin
+                        o_address = get_r16(R16_HL);
+                        o_re = 1;
+                        next_tmpr[7:0] = {flags[FLAG_C], i_r_data[7:1]};
+                        next_flags[FLAG_Z] = (next_tmpr == 0);
+                        next_flags[FLAG_N] = 0;
+                        next_flags[FLAG_H] = 0;
+                        next_flags[FLAG_C] = i_r_data[0];
+                        next_mcycle = 8'd3;
+                    end else if (mcycle == 8'd3) begin
+                        o_address = get_r16(R16_HL);
+                        o_we = 1;
+                        o_w_data = tmpr[7:0];
+                        next_mcycle = 8'd0;
                     end
                 end
                 OP_SLA: begin
-                    // SLA
-                    if (opcode[2:0] == R8_HL_INDIRECT) begin
-                        if (mcycle == 8'd1) begin
-                            o_address = get_r16(R16_HL);
-                            o_re = 1;
-                            next_tmpr[7:0] = {i_r_data[6:0], 1'b0};
-                            next_flags[FLAG_Z] = (next_tmpr == 0);
-                            next_flags[FLAG_N] = 0;
-                            next_flags[FLAG_H] = 0;
-                            next_flags[FLAG_C] = i_r_data[7];
-                            next_mcycle = 8'd2;
-                        end else if (mcycle == 8'd2) begin
-                            o_address = get_r16(R16_HL);
-                            o_we = 1;
-                            o_w_data = tmpr[7:0];
-                            next_mcycle = 8'd0;
-                        end
-                    end else begin
-                        if (mcycle == 8'd1) begin
-                            next_tmpr[7:0] = get_r8(opcode[2:0]);
-                            r8_w_data = {next_tmpr[6:0], 1'b0};
-                            r8_dst = opcode[2:0];
-                            r8_we = 1;
-                            next_flags[FLAG_Z] = (r8_w_data == 0);
-                            next_flags[FLAG_N] = 0;
-                            next_flags[FLAG_H] = 0;
-                            next_flags[FLAG_C] = next_tmpr[7];
-                            next_mcycle = 8'd0;
-                        end
+                    // SLA [HL]
+                    // NOTE: SLA r8は2サイクル目で終わっている
+                    if (mcycle == 8'd2) begin
+                        o_address = get_r16(R16_HL);
+                        o_re = 1;
+                        next_tmpr[7:0] = {i_r_data[6:0], 1'b0};
+                        next_flags[FLAG_Z] = (next_tmpr == 0);
+                        next_flags[FLAG_N] = 0;
+                        next_flags[FLAG_H] = 0;
+                        next_flags[FLAG_C] = i_r_data[7];
+                        next_mcycle = 8'd3;
+                    end else if (mcycle == 8'd3) begin
+                        o_address = get_r16(R16_HL);
+                        o_we = 1;
+                        o_w_data = tmpr[7:0];
+                        next_mcycle = 8'd0;
                     end
                 end
                 OP_SRA: begin
-                    // SRA
-                    if (opcode[2:0] == R8_HL_INDIRECT) begin
-                        if (mcycle == 8'd1) begin
-                            o_address = get_r16(R16_HL);
-                            o_re = 1;
-                            next_tmpr[7:0] = {i_r_data[7], i_r_data[7:1]};
-                            next_flags[FLAG_Z] = (next_tmpr == 0);
-                            next_flags[FLAG_N] = 0;
-                            next_flags[FLAG_H] = 0;
-                            next_flags[FLAG_C] = i_r_data[0];
-                            next_mcycle = 8'd2;
-                        end else if (mcycle == 8'd2) begin
-                            o_address = get_r16(R16_HL);
-                            o_we = 1;
-                            o_w_data = tmpr[7:0];
-                            next_mcycle = 8'd0;
-                        end
-                    end else begin
-                        if (mcycle == 8'd1) begin
-                            next_tmpr[7:0] = get_r8(opcode[2:0]);
-                            r8_w_data = {next_tmpr[7], next_tmpr[7:1]};
-                            r8_dst = opcode[2:0];
-                            r8_we = 1;
-                            next_flags[FLAG_Z] = (r8_w_data == 0);
-                            next_flags[FLAG_N] = 0;
-                            next_flags[FLAG_H] = 0;
-                            next_flags[FLAG_C] = next_tmpr[0];
-                            next_mcycle = 8'd0;
-                        end
+                    // SRA [HL]
+                    // NOTE: SRA r8は2サイクル目で終わっている
+                    if (mcycle == 8'd2) begin
+                        o_address = get_r16(R16_HL);
+                        o_re = 1;
+                        next_tmpr[7:0] = {i_r_data[7], i_r_data[7:1]};
+                        next_flags[FLAG_Z] = (next_tmpr == 0);
+                        next_flags[FLAG_N] = 0;
+                        next_flags[FLAG_H] = 0;
+                        next_flags[FLAG_C] = i_r_data[0];
+                        next_mcycle = 8'd3;
+                    end else if (mcycle == 8'd3) begin
+                        o_address = get_r16(R16_HL);
+                        o_we = 1;
+                        o_w_data = tmpr[7:0];
+                        next_mcycle = 8'd0;
                     end
                 end
                 OP_SWAP: begin
-                    // SWAP
-                    if (opcode[2:0] == R8_HL_INDIRECT) begin
-                        if (mcycle == 8'd1) begin
-                            o_address = get_r16(R16_HL);
-                            o_re = 1;
-                            next_tmpr[7:0] = {i_r_data[3:0], i_r_data[7:4]};
-                            next_flags[FLAG_Z] = (next_tmpr == 0);
-                            next_flags[FLAG_N] = 0;
-                            next_flags[FLAG_H] = 0;
-                            next_flags[FLAG_C] = 0;
-                            next_mcycle = 8'd2;
-                        end else if (mcycle == 8'd2) begin
-                            o_address = get_r16(R16_HL);
-                            o_we = 1;
-                            o_w_data = tmpr[7:0];
-                            next_mcycle = 8'd0;
-                        end
-                    end else begin
-                        if (mcycle == 8'd1) begin
-                            next_tmpr[7:0] = get_r8(opcode[2:0]);
-                            r8_w_data = {next_tmpr[3:0], next_tmpr[7:4]};
-                            r8_dst = opcode[2:0];
-                            r8_we = 1;
-                            next_flags[FLAG_Z] = (r8_w_data == 0);
-                            next_flags[FLAG_N] = 0;
-                            next_flags[FLAG_H] = 0;
-                            next_flags[FLAG_C] = 0;
-                            next_mcycle = 8'd0;
-                        end
+                    // SWAP [HL]
+                    // NOTE: SWAP r8は2サイクル目で終わっている
+                    if (mcycle == 8'd2) begin
+                        o_address = get_r16(R16_HL);
+                        o_re = 1;
+                        next_tmpr[7:0] = {i_r_data[3:0], i_r_data[7:4]};
+                        next_flags[FLAG_Z] = (next_tmpr == 0);
+                        next_flags[FLAG_N] = 0;
+                        next_flags[FLAG_H] = 0;
+                        next_flags[FLAG_C] = 0;
+                        next_mcycle = 8'd3;
+                    end else if (mcycle == 8'd3) begin
+                        o_address = get_r16(R16_HL);
+                        o_we = 1;
+                        o_w_data = tmpr[7:0];
+                        next_mcycle = 8'd0;
                     end
                 end
                 OP_SRL: begin
-                    // SRL
-                    if (opcode[2:0] == R8_HL_INDIRECT) begin
-                        if (mcycle == 8'd1) begin
-                            o_address = get_r16(R16_HL);
-                            o_re = 1;
-                            next_tmpr[7:0] = {1'b0, i_r_data[7:1]};
-                            next_flags[FLAG_Z] = (next_tmpr == 0);
-                            next_flags[FLAG_N] = 0;
-                            next_flags[FLAG_H] = 0;
-                            next_flags[FLAG_C] = i_r_data[0];
-                            next_mcycle = 8'd2;
-                        end else if (mcycle == 8'd2) begin
-                            o_address = get_r16(R16_HL);
-                            o_we = 1;
-                            o_w_data = tmpr[7:0];
-                            next_mcycle = 8'd0;
-                        end
-                    end else begin
-                        if (mcycle == 8'd1) begin
-                            next_tmpr[7:0] = get_r8(opcode[2:0]);
-                            r8_w_data = {1'b0, next_tmpr[7:1]};
-                            r8_dst = opcode[2:0];
-                            r8_we = 1;
-                            next_flags[FLAG_Z] = (r8_w_data == 0);
-                            next_flags[FLAG_N] = 0;
-                            next_flags[FLAG_H] = 0;
-                            next_flags[FLAG_C] = next_tmpr[0];
-                            next_mcycle = 8'd0;
-                        end
+                    // SRL [HL]
+                    // NOTE: SRL r8は2サイクル目で終わっている
+                    if (mcycle == 8'd2) begin
+                        o_address = get_r16(R16_HL);
+                        o_re = 1;
+                        next_tmpr[7:0] = {1'b0, i_r_data[7:1]};
+                        next_flags[FLAG_Z] = (next_tmpr == 0);
+                        next_flags[FLAG_N] = 0;
+                        next_flags[FLAG_H] = 0;
+                        next_flags[FLAG_C] = i_r_data[0];
+                        next_mcycle = 8'd3;
+                    end else if (mcycle == 8'd3) begin
+                        o_address = get_r16(R16_HL);
+                        o_we = 1;
+                        o_w_data = tmpr[7:0];
+                        next_mcycle = 8'd0;
                     end
                 end
                 OP_BIT: begin
-                    // BIT
-                    if (opcode[2:0] == R8_HL_INDIRECT) begin
-                        if (mcycle == 8'd1) begin
-                            o_address = get_r16(R16_HL);
-                            o_re = 1;
-                            next_flags[FLAG_Z] = ~i_r_data[opcode[5:3]];
-                            next_flags[FLAG_N] = 0;
-                            next_flags[FLAG_H] = 1;
-                            next_mcycle = 8'd0;
-                        end
-                    end else begin
-                        if (mcycle == 8'd1) begin
-                            next_tmpr[7:0] = get_r8(opcode[2:0]);
-                            next_flags[FLAG_Z] = ~next_tmpr[{1'b0, opcode[5:3]}];
-                            next_flags[FLAG_N] = 0;
-                            next_flags[FLAG_H] = 1;
-                            next_mcycle = 8'd0;
-                        end
+                    // BIT [HL]
+                    // NOTE: BIT r8は2サイクル目で終わっている
+                    if (mcycle == 8'd2) begin
+                        o_address = get_r16(R16_HL);
+                        o_re = 1;
+                        next_flags[FLAG_Z] = ~i_r_data[opcode[5:3]];
+                        next_flags[FLAG_N] = 0;
+                        next_flags[FLAG_H] = 1;
+                        next_mcycle = 8'd0;
                     end
                 end
                 OP_RES: begin
-                    // RES
-                    if (opcode[2:0] == R8_HL_INDIRECT) begin
-                        if (mcycle == 8'd1) begin
-                            o_address = get_r16(R16_HL);
-                            o_re = 1;
-                            next_tmpr[7:0] = i_r_data;
-                            next_mcycle = 8'd2;
-                        end else if (mcycle == 8'd2) begin
-                            o_address = get_r16(R16_HL);
-                            o_we = 1;
-                            o_w_data = tmpr[7:0] & ~(8'd1 << opcode[5:3]);
-                            next_mcycle = 8'd0;
-                        end
-                    end else begin
-                        if (mcycle == 8'd1) begin
-                            next_tmpr[7:0] = get_r8(opcode[2:0]);
-                            r8_w_data = next_tmpr[7:0] & ~(8'd1 << opcode[5:3]);
-                            r8_dst = opcode[2:0];
-                            r8_we = 1;
-                            next_mcycle = 8'd0;
-                        end
+                    // RES [HL]
+                    // NOTE: RES r8は2サイクル目で終わっている
+                    if (mcycle == 8'd2) begin
+                        o_address = get_r16(R16_HL);
+                        o_re = 1;
+                        next_tmpr[7:0] = i_r_data;
+                        next_mcycle = 8'd3;
+                    end else if (mcycle == 8'd3) begin
+                        o_address = get_r16(R16_HL);
+                        o_we = 1;
+                        o_w_data = tmpr[7:0] & ~(8'd1 << opcode[5:3]);
+                        next_mcycle = 8'd0;
                     end
                 end
                 OP_SET: begin
-                    // SET
-                    if (opcode[2:0] == R8_HL_INDIRECT) begin
-                        if (mcycle == 8'd1) begin
-                            o_address = get_r16(R16_HL);
-                            o_re = 1;
-                            next_tmpr[7:0] = i_r_data;
-                            next_mcycle = 8'd2;
-                        end else if (mcycle == 8'd2) begin
-                            o_address = get_r16(R16_HL);
-                            o_we = 1;
-                            o_w_data = tmpr[7:0] | (8'd1 << opcode[5:3]);
-                            next_mcycle = 8'd0;
-                        end
-                    end else begin
-                        if (mcycle == 8'd1) begin
-                            next_tmpr[7:0] = get_r8(opcode[2:0]);
-                            r8_w_data = next_tmpr[7:0] | (8'd1 << opcode[5:3]);
-                            r8_dst = opcode[2:0];
-                            r8_we = 1;
-                            next_mcycle = 8'd0;
-                        end
+                    // SET [HL]
+                    // NOTE: SET r8は2サイクル目で終わっている
+                    if (mcycle == 8'd2) begin
+                        o_address = get_r16(R16_HL);
+                        o_re = 1;
+                        next_tmpr[7:0] = i_r_data;
+                        next_mcycle = 8'd3;
+                    end else if (mcycle == 8'd3) begin
+                        o_address = get_r16(R16_HL);
+                        o_we = 1;
+                        o_w_data = tmpr[7:0] | (8'd1 << opcode[5:3]);
+                        next_mcycle = 8'd0;
                     end
                 end
                 default: begin

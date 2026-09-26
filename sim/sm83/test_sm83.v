@@ -2555,7 +2555,7 @@ module test_sm83;
                 @(negedge clk);
                 `EXPECT_EQ(memory[hl], expected_value);
             end else begin
-                repeat (3) @(posedge clk);
+                repeat (2) @(posedge clk);
                 @(negedge clk);
                 `EXPECT_EQ(cpu.get_r8(dst), expected_value);
             end
@@ -2611,7 +2611,7 @@ module test_sm83;
                 @(negedge clk);
                 `EXPECT_EQ(memory[hl], expected_value);
             end else begin
-                repeat (3) @(posedge clk);
+                repeat (2) @(posedge clk);
                 @(negedge clk);
                 `EXPECT_EQ(cpu.get_r8(dst), expected_value);
             end
@@ -2667,7 +2667,7 @@ module test_sm83;
                 @(negedge clk);
                 `EXPECT_EQ(memory[hl], expected_value);
             end else begin
-                repeat (3) @(posedge clk);
+                repeat (2) @(posedge clk);
                 @(negedge clk);
                 `EXPECT_EQ(cpu.get_r8(dst), expected_value);
             end
@@ -2727,7 +2727,7 @@ module test_sm83;
                 @(negedge clk);
                 `EXPECT_EQ(memory[hl], expected_value);
             end else begin
-                repeat (3) @(posedge clk);
+                repeat (2) @(posedge clk);
                 @(negedge clk);
                 `EXPECT_EQ(cpu.get_r8(dst), expected_value);
             end
@@ -2785,7 +2785,7 @@ module test_sm83;
                 @(negedge clk);
                 `EXPECT_EQ(memory[hl], expected_value);
             end else begin
-                repeat (3) @(posedge clk);
+                repeat (2) @(posedge clk);
                 @(negedge clk);
                 `EXPECT_EQ(cpu.get_r8(dst), expected_value);
             end
@@ -2839,7 +2839,7 @@ module test_sm83;
                 @(negedge clk);
                 `EXPECT_EQ(memory[hl], expected_value);
             end else begin
-                repeat (3) @(posedge clk);
+                repeat (2) @(posedge clk);
                 @(negedge clk);
                 `EXPECT_EQ(cpu.get_r8(dst), expected_value);
             end
@@ -2892,7 +2892,7 @@ module test_sm83;
                 @(negedge clk);
                 `EXPECT_EQ(memory[hl], expected_value);
             end else begin
-                repeat (3) @(posedge clk);
+                repeat (2) @(posedge clk);
                 @(negedge clk);
                 `EXPECT_EQ(cpu.get_r8(dst), expected_value);
             end
@@ -2946,7 +2946,7 @@ module test_sm83;
                 @(negedge clk);
                 `EXPECT_EQ(memory[hl], expected_value);
             end else begin
-                repeat (3) @(posedge clk);
+                repeat (2) @(posedge clk);
                 @(negedge clk);
                 `EXPECT_EQ(cpu.get_r8(dst), expected_value);
             end
@@ -2994,7 +2994,11 @@ module test_sm83;
                 sm83_set_r8(dst, {7'd0, flag} << bit);
             end
             
-            repeat (3) @(posedge clk);
+            if (dst == R8_HL_INDIRECT) begin
+                repeat (3) @(posedge clk);
+            end else begin
+                repeat (2) @(posedge clk);
+            end
             @(negedge clk);
             
             `EXPECT_EQ(cpu.pc, 2);
@@ -3046,7 +3050,7 @@ module test_sm83;
                 @(negedge clk);
                 `EXPECT_EQ(memory[hl][bit], 0);
             end else begin
-                repeat (3) @(posedge clk);
+                repeat (2) @(posedge clk);
                 @(negedge clk);
                 ret = cpu.get_r8(dst);
                 `EXPECT_EQ(ret[bit], 0);
@@ -3098,7 +3102,7 @@ module test_sm83;
                 @(negedge clk);
                 `EXPECT_EQ(memory[hl][bit], 1);
             end else begin
-                repeat (3) @(posedge clk);
+                repeat (2) @(posedge clk);
                 @(negedge clk);
                 ret = cpu.get_r8(dst);
                 `EXPECT_EQ(ret[bit], 1);
