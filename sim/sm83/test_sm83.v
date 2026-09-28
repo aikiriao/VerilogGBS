@@ -1,5 +1,4 @@
 `include "test.vh"
-`include "sm83_register_address.vh"
 `timescale 1ns/1ns
 
 module test_sm83;
