@@ -10,7 +10,7 @@ module apu #(
     input wire i_we_register, // レジスタ書き込みイネーブル
     input wire [15:0] i_address, // アドレス
     input wire [7:0] i_w_data, // 書き込みデータ
-    output wire [7:0] o_r_data, // 読み込みデータ
+    output reg [7:0] o_r_data, // 読み込みデータ
     output reg signed [SIGNAL_BIT_WIDTH-1:0] o_l_signal, // 左チャンネル信号
     output reg signed [SIGNAL_BIT_WIDTH-1:0] o_r_signal // 右チャンネル信号
 );
@@ -238,65 +238,60 @@ module apu #(
     end
 
     // レジスタ読み取り
-    function [7:0] read_register;
-        input [15:0] address;
-
-        if ((address >= `HWREG_CHANNEL3_WAVE_PATTERN_RAM_START) 
-                & (address <= `HWREG_CHANNEL3_WAVE_PATTERN_RAM_END)) begin
-            read_register = r_sg_wave_pcm;
+    always @(*) begin
+        if ((i_address >= `HWREG_CHANNEL3_WAVE_PATTERN_RAM_START) 
+                & (i_address <= `HWREG_CHANNEL3_WAVE_PATTERN_RAM_END)) begin
+            o_r_data = r_sg_wave_pcm;
         end else begin
             // TODO: 一部のレジスタは部分的に読み出せる
-            case (address)
+            case (i_address)
                 `HWREG_NR10_CHANNEL1_SWEEP:
-                    read_register = nr10_ch1_sweep;
+                    o_r_data = nr10_ch1_sweep;
                 `HWREG_NR11_CHANNEL1_LENGTH_TIMER_DURY_CYCLE:
-                    read_register = nr11_ch1_timer_duty_ratio;
+                    o_r_data = nr11_ch1_timer_duty_ratio;
                 `HWREG_NR12_CHANNEL1_VOLUME_ENVELOPE:
-                    read_register = nr12_ch1_volume_envelope;
+                    o_r_data = nr12_ch1_volume_envelope;
                 `HWREG_NR13_CHANNEL1_PERIOD_LOW:
-                    read_register = nr13_ch1_period_low;
+                    o_r_data = nr13_ch1_period_low;
                 `HWREG_NR14_CHANNEL1_PERIOD_HIGH_CONTROL:
-                    read_register = nr14_ch1_period_high_control;
+                    o_r_data = nr14_ch1_period_high_control;
                 `HWREG_NR21_CHANNEL2_LENGTH_TIMER_DURY_CYCLE:
-                    read_register = nr21_ch2_timer_duty_ratio;
+                    o_r_data = nr21_ch2_timer_duty_ratio;
                 `HWREG_NR22_CHANNEL2_VOLUME_ENVELOPE:
-                    read_register = nr22_ch2_volume_envelope;
+                    o_r_data = nr22_ch2_volume_envelope;
                 `HWREG_NR23_CHANNEL2_PERIOD_LOW:
-                    read_register = nr23_ch2_period_low;
+                    o_r_data = nr23_ch2_period_low;
                 `HWREG_NR24_CHANNEL2_PERIOD_HIGH_CONTROL:
-                    read_register = nr24_ch2_period_high_control;
+                    o_r_data = nr24_ch2_period_high_control;
                 `HWREG_NR30_CHANNEL3_DAC_ENABLE:
-                    read_register = nr30_ch3_dac_enable;
+                    o_r_data = nr30_ch3_dac_enable;
                 `HWREG_NR31_CHANNEL3_LENGTH_TIMER:
-                    read_register = nr31_ch3_length_timer;
+                    o_r_data = nr31_ch3_length_timer;
                 `HWREG_NR32_CHANNEL3_OUTPUT_LEVEL:
-                    read_register = nr32_ch3_output_level;
+                    o_r_data = nr32_ch3_output_level;
                 `HWREG_NR33_CHANNEL3_PERIOD_LOW:
-                    read_register = nr33_ch3_period_low;
+                    o_r_data = nr33_ch3_period_low;
                 `HWREG_NR34_CHANNEL3_PERIOD_HIGH_CONTROL:
-                    read_register = nr34_ch3_period_high_control;
+                    o_r_data = nr34_ch3_period_high_control;
                 `HWREG_NR41_CHANNEL4_LENGTH_TIMER:
-                    read_register = nr41_ch4_length_timer;
+                    o_r_data = nr41_ch4_length_timer;
                 `HWREG_NR42_CHANNEL4_VOLUME_ENVELOPE:
-                    read_register = nr42_ch4_volume_envelope;
+                    o_r_data = nr42_ch4_volume_envelope;
                 `HWREG_NR43_CHANNEL4_FREQUENCY_RANDOMNESS:
-                    read_register = nr43_ch4_frequency_randomness;
+                    o_r_data = nr43_ch4_frequency_randomness;
                 `HWREG_NR44_CHANNEL4_CONTROL:
-                    read_register = nr44_ch4_control;
+                    o_r_data = nr44_ch4_control;
                 `HWREG_NR50_MASTER_VOLUME_VIN_PANNING:
-                    read_register = nr50_master_volume_vin_panning;
+                    o_r_data = nr50_master_volume_vin_panning;
                 `HWREG_NR51_SOUND_PANNING:
-                    read_register = nr51_sound_panning;
+                    o_r_data = nr51_sound_panning;
                 `HWREG_NR52_AUDIO_MASTER_CONTROL:
-                    read_register = nr52_audio_master_control;
+                    o_r_data = nr52_audio_master_control;
                 default:
-                    read_register = 8'h00;
+                    o_r_data = 8'h00;
             endcase
         end
-    endfunction
-
-    // レジスタ読み取り
-    assign o_r_data = read_register(i_address);
+    end
 
     // DAC（4bit符号なし -> 符号反転した8bit符号付き -15, ..., -1, 0, 1, ..., 15 にマップされる）
     function automatic signed [7:0] dac;
