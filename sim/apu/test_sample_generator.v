@@ -71,7 +71,7 @@ module test_sample_generator;
             `ASSERT_EQ(sg.o_enable, 0);
             `ASSERT_EQ(sg.o_dac_enable, 0);
             `ASSERT_EQ(sg.clk_count, 1);
-            `ASSERT_EQ(sg.clk_sample_update_period, 1);
+            `ASSERT_EQ(sg.sample_update_period, 1);
             `ASSERT_EQ(sg.level_shift, 4);
             `ASSERT_EQ(sg.period, 0);
             for (i = 0; i < 32; i = i + 1) begin

@@ -30,7 +30,7 @@ module test_pulse_generator;
     wire dac_enable;
 
     pulse_generator #(
-        .CLOCK_HZ(2097152)
+        .CLOCK_HZ(1048576)
     ) pg (
         .i_clk(clk),
         .i_rst_n(rst_n),
@@ -71,7 +71,7 @@ module test_pulse_generator;
             `ASSERT_EQ(pg.o_enable, 0);
             `ASSERT_EQ(pg.o_dac_enable, 0);
             `ASSERT_EQ(pg.clk_count, 1);
-            `ASSERT_EQ(pg.clk_sample_update_period, 1);
+            `ASSERT_EQ(pg.sample_update_period, 1);
             `ASSERT_EQ(pg.period, 0);
             `ASSERT_EQ(pg.period_update_enable, 0);
             `ASSERT_EQ(pg.period_sweep_direction, 0);
@@ -192,12 +192,11 @@ module test_pulse_generator;
         integer i, d;
 
         begin
-            pg_reset();
-            pg_set_period_sweep(0, 0, 0);
-            // 音量は固定で4'hF
-            pg_set_volume_envelope(4'hF, 1, 0);
-
             for (d = 0; d < 4; d = d + 1) begin
+                pg_reset();
+                pg_set_period_sweep(0, 0, 0);
+                // 音量は固定で4'hF
+                pg_set_volume_envelope(4'hF, 1, 0);
                 // デューティ比設定
                 pg_set_length_timer_duty_ratio(0, d[1:0]); 
                 // ピッチは7FF（1クロック更新）に設定
