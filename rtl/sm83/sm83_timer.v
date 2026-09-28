@@ -9,18 +9,25 @@ module sm83_timer #(
     input wire i_we_register, // レジスタ書き込みイネーブル
     input wire [15:0] i_address, // アドレス
     input wire [7:0] i_w_data, // 書き込みデータ
-    output wire [7:0] o_r_data, // 読み込みデータ
-    output wire o_timer_irq // タイマー割り込み
+    output reg [7:0] o_r_data, // 読み込みデータ
+    output wire o_timer_irq, // タイマー割り込み
+    output wire o_vblank_irq // VBlank割り込み
 );
 
     // DIVレジスタがカウントアップする周期
     localparam DIVIDER_HZ = 16384;
-    localparam DIVIDER_RATE_SYSTEM_CLOCKS_INT = CLOCK_HZ / DIVIDER_HZ;
-    localparam DIVIDER_RATE_SYSTEM_CLOCKS = DIVIDER_RATE_SYSTEM_CLOCKS_INT[7:0];
+    localparam DIVIDER_RATE_CLOCKS_INT = CLOCK_HZ / DIVIDER_HZ;
+    localparam DIVIDER_RATE_CLOCKS = DIVIDER_RATE_CLOCKS_INT[7:0];
     // タイマーがカウントアップする周期
     localparam TIMER_HZ = 1048576;
-    localparam TIMER_SYSTEM_CLOCKS_INT = CLOCK_HZ / TIMER_HZ;
-    localparam TIMER_SYSTEM_CLOCKS = TIMER_SYSTEM_CLOCKS_INT[8:0];
+    localparam TIMER_CLOCKS_INT = CLOCK_HZ / TIMER_HZ;
+    localparam TIMER_CLOCKS = TIMER_CLOCKS_INT[8:0];
+    // VBlank周期
+    // VBlankあたりのマスタークロック数（PPUの1ライン456cycles x 1フレーム154ラインから）
+    localparam MASTER_CLOCKS_PER_VBLANK = 70224;
+    localparam MASTER_CLOCKS_HZ = 4194304;
+    localparam VBLANK_CLOCKS_INT = (MASTER_CLOCKS_PER_VBLANK * CLOCK_HZ) / MASTER_CLOCKS_HZ;
+    localparam VBLANK_CLOCKS = VBLANK_CLOCKS_INT[15:0];
 
     // 各レジスタの書き込み信号
     wire div_write = i_we_register & (i_address == `HWREG_DIV_REGISTER);
@@ -40,27 +47,23 @@ module sm83_timer #(
     reg [8:0] timer_increment_cycle;
     reg [8:0] timer_clock_count;
     reg [8:0] timer_count;
+    reg [15:0] vblank_clock_count;
 
     // レジスタ読み取り
-    function automatic [7:0] read_register;
-        input [15:0] address;
-
-        case (address)
+    always @(*) begin
+        case (i_address)
             `HWREG_DIV_REGISTER:
-                read_register = div_register;
+                o_r_data = div_register;
             `HWREG_TIMA_TIMER_COUNTER:
-                read_register = tima_timer_counter;
+                o_r_data = tima_timer_counter;
             `HWREG_TMA_TIMER_MODULO:
-                read_register = tma_timer_modulo;
+                o_r_data = tma_timer_modulo;
             `HWREG_TAC_TIMER_CONTROL:
-                read_register = tac_timer_control;
+                o_r_data = tac_timer_control;
             default:
-                read_register = 8'h00;
+                o_r_data = 8'h00;
         endcase
-    endfunction
-
-    // レジスタ読み取り
-    assign o_r_data = read_register(i_address);
+    end
 
     // DIVタイマー更新
     always @(posedge i_clk or negedge i_rst_n)
@@ -72,7 +75,7 @@ module sm83_timer #(
             // どの値の書き込みでも0にリセット
             div_register <= 0;
         end else begin
-            if (div_clock_count >= DIVIDER_RATE_SYSTEM_CLOCKS) begin
+            if (div_clock_count >= DIVIDER_RATE_CLOCKS) begin
                 div_register <= div_register + 8'd1;
                 div_clock_count <= 8'd1;
             end else begin
@@ -100,10 +103,10 @@ module sm83_timer #(
             tac_timer_control <= i_w_data;
             timer_enable <= ((i_w_data & 8'h4) != 0);
             case (i_w_data[1:0])
-                2'd0: timer_increment_cycle <= 9'd256 * TIMER_SYSTEM_CLOCKS;
-                2'd1: timer_increment_cycle <= 9'd4 * TIMER_SYSTEM_CLOCKS;
-                2'd2: timer_increment_cycle <= 9'd16 * TIMER_SYSTEM_CLOCKS;
-                2'd3: timer_increment_cycle <= 9'd64 * TIMER_SYSTEM_CLOCKS;
+                2'd0: timer_increment_cycle <= 9'd256 * TIMER_CLOCKS;
+                2'd1: timer_increment_cycle <= 9'd4 * TIMER_CLOCKS;
+                2'd2: timer_increment_cycle <= 9'd16 * TIMER_CLOCKS;
+                2'd3: timer_increment_cycle <= 9'd64 * TIMER_CLOCKS;
             endcase
         end else if (timer_enable) begin
             if (timer_clock_count >= timer_increment_cycle) begin
@@ -123,5 +126,22 @@ module sm83_timer #(
 
     // タイマー割り込み要求
     assign o_timer_irq = timer_enable & (timer_count[7:0] == 8'd0);
+
+    // VBlankタイマー更新
+    always @(posedge i_clk or negedge i_rst_n)
+    begin
+        if (!i_rst_n) begin
+            vblank_clock_count <= 0;
+        end else begin
+            if (vblank_clock_count >= VBLANK_CLOCKS) begin
+                vblank_clock_count <= 16'd1;
+            end else begin
+                vblank_clock_count <= vblank_clock_count + 16'd1;
+            end
+        end
+    end
+
+    // VBlank割り込み要求
+    assign o_vblank_irq = (vblank_clock_count >= VBLANK_CLOCKS);
 
 endmodule

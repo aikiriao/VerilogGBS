@@ -13,6 +13,7 @@ module test_sm83_timer;
     reg [7:0] w_data;
     wire [7:0] r_data;
     wire timer_irq;
+    wire vblank_irq;
 
     sm83_timer #(
         .CLOCK_HZ(TIMER_CLOCK_HZ)
@@ -23,7 +24,8 @@ module test_sm83_timer;
         .i_address(address),
         .i_w_data(w_data),
         .o_r_data(r_data),
-        .o_timer_irq(timer_irq)
+        .o_timer_irq(timer_irq),
+        .o_vblank_irq(vblank_irq)
     );
 
     always #(STEP/2) begin
@@ -32,8 +34,9 @@ module test_sm83_timer;
 
     // レジスタ書き込み
     task automatic sm83_timer_write_register;
-        input reg [15:0] i_address;
-        input reg [7:0] i_value;
+        input [15:0] i_address;
+        input [7:0] i_value;
+
         begin
             address = i_address;
             w_data = i_value;
@@ -61,6 +64,7 @@ module test_sm83_timer;
             `ASSERT_EQ(timer.timer_clock_count, 0);
             `ASSERT_EQ(timer.timer_count, 0);
             `ASSERT_EQ(timer_irq, 0);
+            `ASSERT_EQ(vblank_irq, 0);
         end
     endtask
 
@@ -85,7 +89,7 @@ module test_sm83_timer;
 
             // タイマー値の更新チェック
             sm83_timer_reset();
-            for (t = 0; t <= 10; t = t + 1) begin
+            for (t = 0; t < 10; t = t + 1) begin
                 repeat (64) @(posedge clk);
                 @(negedge clk);
 
