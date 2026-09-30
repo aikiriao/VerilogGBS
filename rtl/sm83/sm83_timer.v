@@ -25,8 +25,8 @@ module sm83_timer #(
     // VBlank周期
     // VBlankあたりのマスタークロック数（PPUの1ライン456cycles x 1フレーム154ラインから）
     localparam MASTER_CLOCKS_PER_VBLANK = 70224;
-    localparam MASTER_CLOCKS_HZ = 4194304;
-    localparam VBLANK_CLOCKS_INT = (MASTER_CLOCKS_PER_VBLANK * CLOCK_HZ) / MASTER_CLOCKS_HZ;
+    localparam MASTER_CLOCK_HZ = 4194304;
+    localparam VBLANK_CLOCKS_INT = (MASTER_CLOCKS_PER_VBLANK * CLOCK_HZ) / MASTER_CLOCK_HZ;
     localparam VBLANK_CLOCKS = VBLANK_CLOCKS_INT[15:0];
 
     // 各レジスタの書き込み信号
@@ -46,7 +46,6 @@ module sm83_timer #(
     reg timer_enable;
     reg [8:0] timer_increment_cycle;
     reg [8:0] timer_clock_count;
-    reg [8:0] timer_count;
     reg [15:0] vblank_clock_count;
 
     // レジスタ読み取り
@@ -94,7 +93,6 @@ module sm83_timer #(
             timer_enable <= 0;
             timer_increment_cycle <= 256; // select == 0に相当
             timer_clock_count <= 0;
-            timer_count <= 0;
         end else if (tima_write) begin
             tima_timer_counter <= i_w_data;
         end else if (tma_write) begin
@@ -111,11 +109,11 @@ module sm83_timer #(
         end else if (timer_enable) begin
             if (timer_clock_count >= timer_increment_cycle) begin
                 // 8bitの意味でオーバーフロー
-                if (timer_count[7:0] == 8'd0) begin
+                if (tima_timer_counter == 8'hFF) begin
                     // MODULOの値にリセット
-                    timer_count <= {1'b0, tma_timer_modulo};
+                    tima_timer_counter <= tma_timer_modulo;
                 end else begin
-                    timer_count <= timer_count + 9'd1;
+                    tima_timer_counter <= tima_timer_counter + 8'd1;
                 end
                 timer_clock_count <= 9'd1;
             end else begin
@@ -125,7 +123,8 @@ module sm83_timer #(
     end
 
     // タイマー割り込み要求
-    assign o_timer_irq = timer_enable & (timer_count[7:0] == 8'd0);
+    // タイマーのオーバーフロー後に割り込み要求が入る
+    assign o_timer_irq = timer_enable & (timer_clock_count == 9'd1) & (tima_timer_counter == tma_timer_modulo);
 
     // VBlankタイマー更新
     always @(posedge i_clk or negedge i_rst_n)
