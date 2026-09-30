@@ -27,7 +27,7 @@ module pulse_generator #(
     output wire [3:0] o_signal // 出力信号
 );
 
-    localparam PULSE_GENERATOR_CLOCK_HZ = 1048576; // サンプルジェネレータのクロック動作周波数
+    localparam PULSE_GENERATOR_CLOCK_HZ = 1048576; // パルスジェネレータのクロック動作周波数
     localparam CLK_UPDATE_COUNT_PERIOD_INT = CLOCK_HZ / PULSE_GENERATOR_CLOCK_HZ; // クロックの更新周期
     localparam [15:0] CLK_UPDATE_COUNT_PERIOD = CLK_UPDATE_COUNT_PERIOD_INT[15:0]; // クロックの更新周期
     localparam SWEEP_UPDATE_PERIOD_UNIT_HZ = 128; // スイープの更新頻度単位
