@@ -8,7 +8,9 @@ module sm83_irq_controller #(
     input wire i_rst_n, // 非同期リセット
     input wire i_we_register, // レジスタ書き込みイネーブル
     input wire [15:0] i_address, // アドレス
-    input wire [7:0] i_w_data, // 書き込みデータ
+    /* verilator lint_off UNUSEDSIGNAL */
+    input wire [7:0] i_w_data, // 書き込みデータ(上位3bitは未使用)
+    /* verilator lint_on UNUSEDSIGNAL */
     input wire i_vblank_irq, // V同期信号割り込み信号
     input wire i_lcd_irq, // LCD割り込み信号
     input wire i_timer_irq, // タイマー割り込み信号
@@ -16,10 +18,10 @@ module sm83_irq_controller #(
     input wire i_joypad_irq, // ジョイパッド割り込み信号
     input wire [4:0] i_irq_ack, // 割り込み処理済み信号(from SM83)
     output reg [7:0] o_r_data, // 読み込みデータ
-    output wire [4:0] o_irq_pending, // 割り込み要求信号(to SM83)
+    output wire [4:0] o_irq_pending // 割り込み要求信号(to SM83)
 );
     // 割り込み信号をまとめた信号
-    wire i_irq = {i_joypad_irq, i_serial_irq, i_timer_irq, i_lcd_irq, i_vblank_irq};
+    wire [4:0] i_irq = {i_joypad_irq, i_serial_irq, i_timer_irq, i_lcd_irq, i_vblank_irq};
 
     // 各レジスタの書き込み信号
     wire if_write = i_we_register & (i_address == `HWREG_IF_INTERRUPT_FLAG);
