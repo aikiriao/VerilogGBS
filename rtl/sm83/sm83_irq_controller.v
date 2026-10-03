@@ -1,9 +1,7 @@
 `timescale 1ns/1ns
 `include "sm83_register_address.vh"
 
-module sm83_irq_controller #(
-    parameter CLOCK_HZ = 1048576 // クロック動作周波数
-)(
+module sm83_irq_controller (
     input wire i_clk, // クロック
     input wire i_rst_n, // 非同期リセット
     input wire i_we_register, // レジスタ書き込みイネーブル

@@ -5,10 +5,12 @@ module sm83 (
     input wire i_clk, // クロック
     input wire i_rst_n, // 非同期リセット
     input wire [7:0] i_r_data, // 読みだしたデータ
+    input wire [4:0] i_irq_pending, // 割り込み要求信号
     output reg [15:0] o_address, // 読み書きアドレス
     output reg [7:0] o_w_data, // メモリ書き出しデータ
     output reg o_re, // メモリ読み出しイネーブル
-    output reg o_we // メモリ書き出しイネーブル
+    output reg o_we, // メモリ書き出しイネーブル
+    output reg [4:0] o_irq_ack // 割り込み応答信号
 );
 
     `include "sm83_defs.vh"
@@ -315,6 +317,9 @@ module sm83 (
         o_re = 0;
         o_we = 0;
 
+        // 割り込み応答信号
+        o_irq_ack = 5'b00000;
+
         // 8bit/16bitレジスタのライトバック信号
         r8_w_data = 8'h00;
         r8_dst = 3'd0;
@@ -324,20 +329,65 @@ module sm83 (
         r16_we = 0;
         r16stk_we = 0;
 
-        // マシンサイクル毎の処理
-        if (mcycle == 8'd0) begin
+        if (ime && (|i_irq_pending)) begin
+            // 割り込み処理
+            // 現在のPCをスタックにプッシュ
+            if (mcycle == 8'd0) begin
+                o_address = sp - 16'd1;
+                o_we = 1;
+                o_w_data = pc[15:8];
+                next_sp = sp - 16'd1;
+                next_mcycle = 8'd1;
+            end else if (mcycle == 8'd1) begin
+                o_address = sp - 16'd1;
+                o_we = 1;
+                o_w_data = pc[7:0];
+                next_sp = sp - 16'd1;
+                next_mcycle = 8'd2;
+            end else if (mcycle == 8'd2) begin
+                // 割り込みフラグをクリアし、PCを更新
+                next_ime = 0; 
+                casez (i_irq_pending)
+                    5'b????1: begin
+                        next_pc = 16'h0040;
+                        o_irq_ack = 5'b00001;
+                    end
+                    5'b???10: begin
+                        next_pc = 16'h0048;
+                        o_irq_ack = 5'b00010;
+                    end
+                    5'b??100: begin
+                        next_pc = 16'h0050;
+                        o_irq_ack = 5'b00100;
+                    end
+                    5'b?1000: begin
+                        next_pc = 16'h0058;
+                        o_irq_ack = 5'b01000;
+                    end
+                    5'b10000: begin
+                        next_pc = 16'h0060;
+                        o_irq_ack = 5'b10000;
+                    end
+                    default: begin
+                        /* BUG */
+                    end
+                endcase
+                next_mcycle = 8'd0;
+            end
+        end else if (mcycle == 8'd0) begin
+            // マシンサイクル毎の処理
             // PCにあるデータを読みだす
             o_address = pc;
             o_re = 1;
-
+            
             // オペコードの読み出し・デコード
             next_opcode = fetch_opcode;
             next_op = fetch_op;
-
+            
             // 次状態
             next_pc = pc + 16'd1;
             next_mcycle = 8'd1;
-
+            
             // フェッチしたオペコードを即時に使用する命令の処理
             // IMPORTANT: メモリから命令をデコードしているので同一サイクル内でメモリアクセスは禁止
             case (fetch_op)

@@ -9,21 +9,25 @@ module test_sm83;
     reg clk;
     reg rst_n;
     reg [7:0] memory[0:65535];
+    reg [4:0] irq_pending;
     wire [7:0] r_data;
     wire [15:0] address;
     wire [7:0] w_data;
     wire re;
     wire we;
+    wire [4:0] irq_ack;
     integer i;
 
     sm83 cpu (
         .i_clk(clk),
         .i_rst_n(rst_n),
         .i_r_data(r_data),
+        .i_irq_pending(irq_pending),
         .o_address(address),
         .o_w_data(w_data),
         .o_re(re),
-        .o_we(we)
+        .o_we(we),
+        .o_irq_ack(irq_ack)
     );
 
     always #(STEP/2) begin
@@ -3138,6 +3142,77 @@ module test_sm83;
         end
     endtask
 
+    // 割り込み処理のテスト
+    task automatic sm83_irq_handle_test_sub;
+        input reg [4:0] irq;
+        reg [15:0] initial_pc;
+        integer c;
+        localparam iteration = 10;
+        localparam [15:0] initial_sp = 16'h0100;
+
+        begin
+            for (c = 0; c < iteration; c = c + 1) begin
+                sm83_reset();
+                cpu.sp = initial_sp;
+
+                // PCをランダムにセット
+                random16(initial_pc);
+                cpu.pc = initial_pc;
+
+                // 割り込み要求を入力
+                irq_pending = irq;
+                cpu.ime = 1; // 割り込みを有効化
+
+                repeat (2) @(posedge clk);
+                @(negedge clk);
+
+                // 2クロック後の次状態としてPC/ACKが設定される
+                `EXPECT_EQ(cpu.next_ime, 0);
+                casez (irq)
+                    5'b????1: begin
+                        `EXPECT_EQ(cpu.next_pc, 16'h0040);
+                        `EXPECT_EQ(irq_ack, 5'b00001);
+                    end
+                    5'b???10: begin
+                        `EXPECT_EQ(cpu.next_pc, 16'h0048);
+                        `EXPECT_EQ(irq_ack, 5'b00010);
+                    end
+                    5'b??100: begin
+                        `EXPECT_EQ(cpu.next_pc, 16'h0050);
+                        `EXPECT_EQ(irq_ack, 5'b00100);
+                    end
+                    5'b?1000: begin
+                        `EXPECT_EQ(cpu.next_pc, 16'h0058);
+                        `EXPECT_EQ(irq_ack, 5'b01000);
+                    end
+                    5'b10000: begin
+                        `EXPECT_EQ(cpu.next_pc, 16'h0060);
+                        `EXPECT_EQ(irq_ack, 5'b10000);
+                    end
+                    default: begin
+                        `ASSERT_TRUE(0);
+                    end
+                endcase
+
+                // PCがスタックに記録されているか？
+                `EXPECT_EQ(cpu.sp, initial_sp - 16'd2);
+                `EXPECT_EQ(memory[initial_sp - 16'd1], initial_pc[15:8]);
+                `EXPECT_EQ(memory[initial_sp - 16'd2], initial_pc[7:0]);
+            end
+        end
+    endtask
+
+    // 割り込み処理のテスト
+    task automatic sm83_irq_handle_test;
+        integer f;
+
+        begin
+            for (f = 0; f < 5; f = f + 1) begin
+                sm83_irq_handle_test_sub(1 << f);
+            end
+        end
+    endtask
+
     initial begin
         $dumpfile("build/test_sm83.vcd");
         $dumpvars(0, test_sm83);
@@ -3210,6 +3285,7 @@ module test_sm83;
         sm83_bit_test();
         sm83_rst_test();
         sm83_set_test();
+        sm83_irq_handle_test();
 
         $finish;
     end
