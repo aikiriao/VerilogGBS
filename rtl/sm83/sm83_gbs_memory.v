@@ -13,7 +13,7 @@ module sm83_gbs_memory #(
     input wire i_we, // メモリ書き出しイネーブル
     output reg [7:0] o_r_data // 読み込みデータ
 );
-
+    // ROM終端アドレス
     localparam ROM_END_ADDRESS = `VRAM_START_ADDRESS;
 
     reg [7:0] ram[0:32767]; // RAM(32KiB)
@@ -49,8 +49,8 @@ module sm83_gbs_memory #(
     always @(posedge i_clk or negedge i_rst_n)
     begin
         if (!i_rst_n) begin
-            ramg <= 4'd0;
-            rom_bank <= 8'd0;
+            ramg <= 4'hA;
+            rom_bank <= 8'd1;
         end else if (ramg_write) begin
             ramg <= i_w_data[3:0];
         end else if (bank1_low_write) begin
