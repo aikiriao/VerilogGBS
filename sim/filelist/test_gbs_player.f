@@ -1,0 +1,12 @@
+./rtl/sm83/sm83.v
+./rtl/sm83/sm83_gbs_memory.v
+./rtl/sm83/sm83_irq_controller.v
+./rtl/sm83/sm83_timer.v
+./rtl/apu/length_timer.v
+./rtl/apu/envelope_generator.v
+./rtl/apu/pulse_generator.v
+./rtl/apu/sample_generator.v
+./rtl/apu/noise_generator.v
+./rtl/apu/apu.v
+./rtl/sm83/gbs_player.v
+./sim/sm83/test_gbs_player.v
