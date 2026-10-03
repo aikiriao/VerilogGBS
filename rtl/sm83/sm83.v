@@ -4,6 +4,7 @@
 module sm83 (
     input wire i_clk, // クロック
     input wire i_rst_n, // 非同期リセット
+    input wire i_mcycle_ce, // マシンサイクルクロック有効か
     input wire [7:0] i_r_data, // 読みだしたデータ
     input wire [4:0] i_irq_pending, // 割り込み要求信号
     output reg [15:0] o_address, // 読み書きアドレス
@@ -257,7 +258,7 @@ module sm83 (
             e <= 8'd0;
             h <= 8'd0;
             l <= 8'd0;
-        end else begin
+        end else if (i_mcycle_ce) begin
             flags <= next_flags;
             sp <= next_sp;
             pc <= next_pc;

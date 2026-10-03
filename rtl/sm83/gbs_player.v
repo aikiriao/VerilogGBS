@@ -11,6 +11,8 @@ module gbs_player #(
     output wire signed [SIGNAL_BIT_WIDTH-1:0] o_r_signal // 右チャンネル信号
 );
 
+    reg [1:0] clk_div; // クロック分周
+
     wire [15:0] address;
     wire [7:0] cpu_r_data;
     wire [7:0] cpu_w_data;
@@ -31,7 +33,9 @@ module gbs_player #(
     wire [7:0] irq_r_data;
     wire [7:0] memory_r_data;
     wire memory_address = (address < `HWREG_START_ADDRESS) | ((address >= `HRAM_START_ADDRESS) & (address < `HWREG_IE_INTERRUPT_ENABLE));
-    wire memory_we = cpu_we & memory_address;
+    wire memory_we = cpu_we & sm83_mcycle_ce & memory_address;
+
+    wire sm83_mcycle_ce = (clk_div == 2'd0); // 1/4周期のパルス
 
     // CPUへの入力データをアドレスに依存して決定
     assign cpu_r_data = (apu_address) ? apu_r_data
@@ -39,11 +43,21 @@ module gbs_player #(
                         : (irq_address) ? irq_r_data
                         : (memory_address) ? memory_r_data
                         : 8'd0;
+    
+    // クロック分周パルス生成
+    always @(posedge i_clk or negedge i_rst_n) begin
+        if (!i_rst_n) begin
+            clk_div <= 2'd0;
+        end else begin
+            clk_div <= clk_div + 2'd1;
+        end
+    end
 
     // CPUコア
     sm83 cpu (
         .i_clk(i_clk),
         .i_rst_n(i_rst_n),
+        .i_mcycle_ce(sm83_mcycle_ce),
         .i_r_data(cpu_r_data), 
         .i_irq_pending(cpu_irq_pending), 
         .o_address(address),
