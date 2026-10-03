@@ -151,4 +151,14 @@
 // 割り込み有効フラグ
 `define HWREG_IE_INTERRUPT_ENABLE 16'hFFFF
 
+// MBC(Memory Bank Controller)レジスタアドレスの範囲
+// MBC1 RAM gate register
+`define RAMG_START_ADDRESS 16'h0000
+// BANK1 MBC1 bank register 1
+`define BANK1_START_ADDRESS 16'h2000
+// BANK2 MBC1 bank register 2
+`define BANK2_START_ADDRESS 16'h4000
+// MBC1 mode register
+`define MODE_START_ADDRESS 16'h6000
+
 `endif //  SM83_REGISTER_ADDRESS_VH
