@@ -800,6 +800,7 @@ module sm83 (
                         next_flags[FLAG_N] = 0;
                         o_address = get_r16(R16_HL);
                         o_we = 1;
+                        next_mcycle = 8'd0;
                     end
                 end
                 OP_DEC: begin
@@ -819,6 +820,7 @@ module sm83 (
                         next_flags[FLAG_N] = 1;
                         o_address = get_r16(R16_HL);
                         o_we = 1;
+                        next_mcycle = 8'd0;
                     end
                 end
                 OP_LD_IMM8: begin
