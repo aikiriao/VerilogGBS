@@ -388,7 +388,6 @@ module sm83 (
         end else if (ime && (|i_irq_pending)) begin
             // 割り込み信号受信
             next_irq_active = select_irq(i_irq_pending);
-            next_mcycle = 8'd0;
         end else if (mcycle == 8'd0) begin
             // マシンサイクル毎の処理
             // PCにあるデータを読みだす
