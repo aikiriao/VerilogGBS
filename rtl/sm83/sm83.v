@@ -28,6 +28,7 @@ module sm83 (
     reg [15:0] sp; // スタックポインタ
     reg [15:0] pc; // プログラムカウンタ
     reg ime; // 割り込みイネーブル
+    reg [4:0] irq_active; // 処理中の割り込みフラグ
     // 内部状態
     reg [7:0] mcycle; // マシンサイクル
     reg [7:0] opcode; // オペコード
@@ -51,6 +52,7 @@ module sm83 (
     reg [15:0] next_sp;
     reg [15:0] next_tmpr;
     reg next_ime;
+    reg [4:0] next_irq_active;
 
     // 8bitレジスタ値の取得
     function automatic [7:0] get_r8(
@@ -239,6 +241,22 @@ module sm83 (
     end
     endfunction
 
+    // 割り込み信号の選択
+    function automatic [4:0] select_irq(
+        input [4:0] irq_pending
+    );
+    begin
+        casez (irq_pending)
+            5'b????1: select_irq = 5'b00001;
+            5'b???10: select_irq = 5'b00010;
+            5'b??100: select_irq = 5'b00100;
+            5'b?1000: select_irq = 5'b01000;
+            5'b10000: select_irq = 5'b10000;
+            default: select_irq = 5'b00000;
+        endcase
+    end
+    endfunction
+
     // 状態更新
     always @(posedge i_clk or negedge i_rst_n) begin
         if (!i_rst_n) begin
@@ -251,6 +269,7 @@ module sm83 (
             opcode <= 8'd0;
             tmpr <= 16'd0;
             ime <= 1'b0;
+            irq_active <= 5'd0;
             a <= 8'd0;
             b <= 8'd0;
             c <= 8'd0;
@@ -267,6 +286,7 @@ module sm83 (
             opcode <= next_opcode;
             tmpr <= next_tmpr;
             ime <= next_ime;
+            irq_active <= next_irq_active;
             if (r8_we) begin
                 case (r8_dst)
                     R8_A: a <= r8_w_data;
@@ -311,13 +331,13 @@ module sm83 (
         next_op = op;
         next_tmpr = tmpr;
         next_ime = ime;
+        next_irq_active = irq_active;
 
         // バスは基本的に何もしない
         o_address = 16'h0000;
         o_w_data = 8'h00;
         o_re = 0;
         o_we = 0;
-
         // 割り込み応答信号
         o_irq_ack = 5'b00000;
 
@@ -330,51 +350,45 @@ module sm83 (
         r16_we = 0;
         r16stk_we = 0;
 
-        if (ime && (|i_irq_pending)) begin
+        if (irq_active != 5'd0) begin
             // 割り込み処理
-            // 現在のPCをスタックにプッシュ
             if (mcycle == 8'd0) begin
+                // 2サイクルNOP
+                next_mcycle = 8'd1;
+            end else if (mcycle == 8'd1) begin
+                next_mcycle = 8'd2;
+            end else if (mcycle == 8'd2) begin
+                // 現在のPCをスタックにプッシュ
                 o_address = sp - 16'd1;
                 o_we = 1;
                 o_w_data = pc[15:8];
                 next_sp = sp - 16'd1;
-                next_mcycle = 8'd1;
-            end else if (mcycle == 8'd1) begin
+                next_mcycle = 8'd3;
+            end else if (mcycle == 8'd3) begin
                 o_address = sp - 16'd1;
                 o_we = 1;
                 o_w_data = pc[7:0];
                 next_sp = sp - 16'd1;
-                next_mcycle = 8'd2;
-            end else if (mcycle == 8'd2) begin
+                next_mcycle = 8'd4;
+            end else if (mcycle == 8'd4) begin
                 // 割り込みフラグをクリアし、PCを更新
-                next_ime = 0; 
-                casez (i_irq_pending)
-                    5'b????1: begin
-                        next_pc = 16'h0040;
-                        o_irq_ack = 5'b00001;
-                    end
-                    5'b???10: begin
-                        next_pc = 16'h0048;
-                        o_irq_ack = 5'b00010;
-                    end
-                    5'b??100: begin
-                        next_pc = 16'h0050;
-                        o_irq_ack = 5'b00100;
-                    end
-                    5'b?1000: begin
-                        next_pc = 16'h0058;
-                        o_irq_ack = 5'b01000;
-                    end
-                    5'b10000: begin
-                        next_pc = 16'h0060;
-                        o_irq_ack = 5'b10000;
-                    end
-                    default: begin
-                        /* BUG */
-                    end
+                o_irq_ack = irq_active;
+                casez (irq_active)
+                    5'b00001: next_pc = 16'h0040;
+                    5'b00010: next_pc = 16'h0048;
+                    5'b00100: next_pc = 16'h0050;
+                    5'b01000: next_pc = 16'h0058;
+                    5'b10000: next_pc = 16'h0060;
+                    default: next_pc = pc; // BUG
                 endcase
+                next_ime = 0; 
+                next_irq_active = 5'd0;
                 next_mcycle = 8'd0;
             end
+        end else if (ime && (|i_irq_pending)) begin
+            // 割り込み信号受信
+            next_irq_active = select_irq(i_irq_pending);
+            next_mcycle = 8'd0;
         end else if (mcycle == 8'd0) begin
             // マシンサイクル毎の処理
             // PCにあるデータを読みだす
