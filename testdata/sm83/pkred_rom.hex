@@ -10,6 +10,31 @@
 // Stack Pointer: DFFF
 // Timer Modulo:  0
 // Timer Control:  0
+@0
+// SPの設定 
+31 FF DF // LD SP, DFFF 
+// TMA/TACの設定 
+3E 00 // LD A, 00 
+E0 06 // LDH [0x06], A 
+3E 00 // LD A, 00 
+E0 07 // LDH [0x07], A 
+// A（再生楽曲番号） ここを差し替えると楽曲を変えられる 
+3E 01 // LD A, 01 
+// Initルーチン呼び出し 
+CD 56 3F // CALL 3F56 
+// 割り込み有効 
+3E 1F // LD A, 1F 
+E0 FF // LDH [0xFF], A 
+FB // EI 
+// 無限ループ（再生待機） 
+18 FE // JR -2 
+// Playルーチンを割り込みに仕込む 
+@40
+CD 7E 3F // CALL 3F7E 
+D9 // RETI 
+@50
+CD 7E 3F // CALL 3F7E 
+D9 // RETI 
 @3F56
 21 9A 3F 87 85 6F 2A 47 7E EA 00 20 EA EF C0 FE 01 20 06 78 CD 76 58 18 0E FE 02 20 06 78 CD 35 
 60 18 04 78 CD EA 58 C9 FA EF C0 FE 01 20 05 CD 03 51 18 0F FE 02 20 08 CD 6E 53 CD 79 58 18 03 
