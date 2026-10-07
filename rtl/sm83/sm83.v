@@ -355,7 +355,7 @@ module sm83 (
         r16_we = 0;
         r16stk_we = 0;
 
-        // 割り込み信号受信
+        // 割り込み信号を受信したらラッチ
         if (ime && (|i_irq_pending)) begin
             next_irq_active = select_irq(i_irq_pending);
         end
