@@ -19,8 +19,8 @@ module apu #(
     localparam AUDIO_OUTPUT_PERIOD_INT = CLOCK_HZ / AUDIO_OUTPUT_HZ;
     localparam [7:0] AUDIO_OUTPUT_PERIOD = AUDIO_OUTPUT_PERIOD_INT[7:0];
 
-    localparam HPF_COEFFIENT_FIXED = $rtoi(0.999958 * (1 << (SIGNAL_BIT_WIDTH - 1)));
-    localparam [SIGNAL_BIT_WIDTH-1:0] HPF_COEFFIENT = HPF_COEFFIENT_FIXED[SIGNAL_BIT_WIDTH-1:0]; // HPF係数
+    localparam signed HPF_COEFFIENT_FIXED = $rtoi(0.999958 * (1 << (SIGNAL_BIT_WIDTH - 1)));
+    localparam signed [SIGNAL_BIT_WIDTH-1:0] HPF_COEFFIENT = HPF_COEFFIENT_FIXED[SIGNAL_BIT_WIDTH-1:0]; // HPF係数
 
     // 各レジスタの書き込み信号
     wire nr10_write = i_we_register & (i_address == `HWREG_NR10_CHANNEL1_SWEEP);
@@ -328,19 +328,18 @@ module apu #(
     // マスターボリューム
     function automatic signed [7:0] apply_master_volume;
         input [2:0] volume;
-        input [7:0] in;
+        input signed [7:0] in;
 
-        case (volume)
-            3'd0: apply_master_volume = in >>> 3;
-            3'd1: apply_master_volume = (2 * in) >>> 3;
-            3'd2: apply_master_volume = (3 * in) >>> 3;
-            3'd3: apply_master_volume = (4 * in) >>> 3;
-            3'd4: apply_master_volume = (5 * in) >>> 3;
-            3'd5: apply_master_volume = (6 * in) >>> 3;
-            3'd6: apply_master_volume = (7 * in) >>> 3;
-            3'd7: apply_master_volume = in;
-            default: apply_master_volume = 0;
-        endcase
+        reg signed [3:0] gain;
+        reg signed [11:0] scaled;
+
+        begin
+            // in * (volume + 1) / 8
+            gain = $signed({1'b0, volume}) + 4'sd1;
+            scaled = in * gain;
+
+            apply_master_volume = scaled >>> 3;
+        end
     endfunction
 
     // マスターボリューム適用
@@ -348,8 +347,22 @@ module apu #(
     assign r_signal = apply_master_volume(nr52_audio_master_control[2:0], mixed_r_signal);
 
     // ビット幅拡張
-    assign ex_l_signal = {{8{l_signal[7]}}, l_signal} <<< (SIGNAL_BIT_WIDTH - 8);
-    assign ex_r_signal = {{8{r_signal[7]}}, r_signal} <<< (SIGNAL_BIT_WIDTH - 8);
+    assign ex_l_signal = {l_signal, {(SIGNAL_BIT_WIDTH - 8){1'b0}}};
+    assign ex_r_signal = {r_signal, {(SIGNAL_BIT_WIDTH - 8){1'b0}}};
+
+    // HPFバッファ更新
+    function automatic signed [SIGNAL_BIT_WIDTH-1:0] update_hpf_buffer;
+        input signed [SIGNAL_BIT_WIDTH-1:0] in;
+        input signed [SIGNAL_BIT_WIDTH-1:0] out;
+        reg signed [(2 * SIGNAL_BIT_WIDTH) - 1:0] mul;
+        reg signed [(2 * SIGNAL_BIT_WIDTH)-1:0] next_buffer;
+
+        begin
+            mul = out * HPF_COEFFIENT;
+            next_buffer = in - (mul >>> (SIGNAL_BIT_WIDTH - 1));
+            update_hpf_buffer = next_buffer[SIGNAL_BIT_WIDTH-1:0];
+        end
+    endfunction
 
     // HPF適用・オーディオ出力
     assign out_l = ex_l_signal - hpf_buffer_l;
@@ -366,8 +379,8 @@ module apu #(
             if (audio_clk_count >= AUDIO_OUTPUT_PERIOD) begin
                 o_l_signal <= out_l;
                 o_r_signal <= out_r;
-                hpf_buffer_l <= ex_l_signal - ((out_l * HPF_COEFFIENT) >>> (SIGNAL_BIT_WIDTH - 1));
-                hpf_buffer_r <= ex_r_signal - ((out_r * HPF_COEFFIENT) >>> (SIGNAL_BIT_WIDTH - 1));
+                hpf_buffer_l <= update_hpf_buffer(ex_l_signal, out_l);
+                hpf_buffer_r <= update_hpf_buffer(ex_r_signal, out_r);
                 audio_clk_count <= 1;
             end else begin
                 audio_clk_count <= audio_clk_count + 1;

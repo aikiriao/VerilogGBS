@@ -28,10 +28,10 @@ module test_gbs_player;
             if (clk_count >= AUDIO_OUTPUT_PERIOD) begin
                 if (fd != 0) begin
                     $fwrite(fd, "%c%c%c%c",
-                        player.apu.ex_l_signal[7:0],
-                        player.apu.ex_l_signal[15:8],
-                        player.apu.ex_r_signal[7:0],
-                        player.apu.ex_r_signal[15:8]);
+                        l_signal[7:0],
+                        l_signal[15:8],
+                        r_signal[7:0],
+                        r_signal[15:8]);
                 end
                 clk_count <= 1;
             end else begin
