@@ -29,6 +29,7 @@ module sm83 (
     reg [15:0] pc; // プログラムカウンタ
     reg ime; // 割り込みイネーブル
     reg [4:0] irq_active; // 処理中の割り込みフラグ
+    reg irq_process; // 割り込み処理中のフラグ
     // 内部状態
     reg [7:0] mcycle; // マシンサイクル
     reg [7:0] opcode; // オペコード
@@ -53,6 +54,7 @@ module sm83 (
     reg [15:0] next_tmpr;
     reg next_ime;
     reg [4:0] next_irq_active;
+    reg next_irq_process;
 
     // 8bitレジスタ値の取得
     function automatic [7:0] get_r8(
@@ -270,6 +272,7 @@ module sm83 (
             tmpr <= 16'd0;
             ime <= 1'b0;
             irq_active <= 5'd0;
+            irq_process <= 1'b0;
             a <= 8'd0;
             b <= 8'd0;
             c <= 8'd0;
@@ -287,6 +290,7 @@ module sm83 (
             tmpr <= next_tmpr;
             ime <= next_ime;
             irq_active <= next_irq_active;
+            irq_process <= next_irq_process;
             if (r8_we) begin
                 case (r8_dst)
                     R8_A: a <= r8_w_data;
@@ -332,6 +336,7 @@ module sm83 (
         next_tmpr = tmpr;
         next_ime = ime;
         next_irq_active = irq_active;
+        next_irq_process = irq_process;
 
         // バスは基本的に何もしない
         o_address = 16'h0000;
@@ -350,12 +355,15 @@ module sm83 (
         r16_we = 0;
         r16stk_we = 0;
 
-        if (irq_active != 5'd0) begin
+        // 割り込み信号受信
+        if (ime && (|i_irq_pending)) begin
+            next_irq_active = select_irq(i_irq_pending);
+        end
+
+        if (irq_process) begin
             // 割り込み処理
-            if (mcycle == 8'd0) begin
-                // 2サイクルNOP
-                next_mcycle = 8'd1;
-            end else if (mcycle == 8'd1) begin
+            if (mcycle == 8'd1) begin
+                // NOP（タイミングを実機に合わせる）
                 next_mcycle = 8'd2;
             end else if (mcycle == 8'd2) begin
                 // 現在のPCをスタックにプッシュ
@@ -383,11 +391,13 @@ module sm83 (
                 endcase
                 next_ime = 0; 
                 next_irq_active = 5'd0;
+                next_irq_process = 0;
                 next_mcycle = 8'd0;
             end
-        end else if (ime && (|i_irq_pending)) begin
-            // 割り込み信号受信
-            next_irq_active = select_irq(i_irq_pending);
+        end else if ((mcycle == 8'd0) && (irq_active != 5'd0)) begin
+            // 割り込み処理に以降
+            next_irq_process = 1;
+            next_mcycle = 8'd1;
         end else if (mcycle == 8'd0) begin
             // マシンサイクル毎の処理
             // PCにあるデータを読みだす
