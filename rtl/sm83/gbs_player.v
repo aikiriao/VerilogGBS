@@ -20,19 +20,19 @@ module gbs_player #(
     wire [4:0] cpu_irq_ack;
     wire cpu_we;
     wire cpu_re;
-    wire apu_address = (address >= `HWREG_NR10_CHANNEL1_SWEEP) & (address < `HWREG_CHANNEL3_WAVE_PATTERN_RAM_END);
+    wire apu_address = (address >= `HWREG_NR10_CHANNEL1_SWEEP) && (address < `HWREG_CHANNEL3_WAVE_PATTERN_RAM_END);
     wire apu_we = cpu_we & apu_address;
     wire [7:0] apu_r_data;
-    wire timer_address = (address >= `HWREG_DIV_REGISTER) & (address <= `HWREG_TAC_TIMER_CONTROL);
+    wire timer_address = (address >= `HWREG_DIV_REGISTER) && (address <= `HWREG_TAC_TIMER_CONTROL);
     wire timer_we = cpu_we & timer_address;
     wire [7:0] timer_r_data;
     wire timer_irq;
     wire vblank_irq;
-    wire irq_address = (address == `HWREG_IF_INTERRUPT_FLAG) | (address == `HWREG_IE_INTERRUPT_ENABLE);
+    wire irq_address = (address == `HWREG_IF_INTERRUPT_FLAG) || (address == `HWREG_IE_INTERRUPT_ENABLE);
     wire irq_we = cpu_we & irq_address;
     wire [7:0] irq_r_data;
     wire [7:0] memory_r_data;
-    wire memory_address = (address < `HWREG_START_ADDRESS) | ((address >= `HRAM_START_ADDRESS) & (address < `HWREG_IE_INTERRUPT_ENABLE));
+    wire memory_address = (address < `HWREG_START_ADDRESS) || ((address >= `HRAM_START_ADDRESS) && (address < `HWREG_IE_INTERRUPT_ENABLE));
     wire memory_we = cpu_we & sm83_mcycle_ce & memory_address;
 
     wire sm83_mcycle_ce = (clk_div == 2'd0); // 1/4周期のパルス
