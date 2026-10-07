@@ -438,7 +438,8 @@ module sm83 (
                     {next_flags[FLAG_Z],
                         next_flags[FLAG_H],
                         next_flags[FLAG_C],
-                        r16_w_data} = add16(get_r16(R16_HL), get_r16(fetch_opcode[5:4]), flags[FLAG_C]);
+                        r16_w_data} = add16(get_r16(R16_HL), get_r16(fetch_opcode[5:4]), 0);
+                    next_flags[FLAG_Z] = flags[FLAG_Z]; // ゼロフラグは不変
                     next_flags[FLAG_N] = 0;
                     r16_dst = R16_HL;
                     r16_we = 1;
