@@ -2,7 +2,7 @@
 `include "sm83_register_address.vh"
 
 module apu #(
-    parameter CLOCK_HZ = 2097152, // クロック動作周波数
+    parameter CLOCK_HZ = 4194304, // クロック動作周波数
     parameter SIGNAL_BIT_WIDTH = 16 // 出力信号のビット深度
 )(
     input wire i_clk, // クロック
@@ -14,6 +14,10 @@ module apu #(
     output reg signed [SIGNAL_BIT_WIDTH-1:0] o_l_signal, // 左チャンネル信号
     output reg signed [SIGNAL_BIT_WIDTH-1:0] o_r_signal // 右チャンネル信号
 );
+
+    localparam AUDIO_OUTPUT_HZ = 4194304; // オーディオ出力周波数
+    localparam AUDIO_OUTPUT_PERIOD_INT = CLOCK_HZ / AUDIO_OUTPUT_HZ;
+    localparam [7:0] AUDIO_OUTPUT_PERIOD = AUDIO_OUTPUT_PERIOD_INT[7:0];
 
     localparam HPF_COEFFIENT_FIXED = $rtoi(0.999958 * (1 << (SIGNAL_BIT_WIDTH - 1)));
     localparam [SIGNAL_BIT_WIDTH-1:0] HPF_COEFFIENT = HPF_COEFFIENT_FIXED[SIGNAL_BIT_WIDTH-1:0]; // HPF係数
@@ -57,6 +61,7 @@ module apu #(
     wire signed [SIGNAL_BIT_WIDTH-1:0] out_l;
     wire signed [SIGNAL_BIT_WIDTH-1:0] out_r;
 
+    reg [7:0] audio_clk_count; // オーディオ出力用クロックカウント
     reg [SIGNAL_BIT_WIDTH-1:0] hpf_buffer_l;
     reg [SIGNAL_BIT_WIDTH-1:0] hpf_buffer_r;
 
@@ -294,6 +299,7 @@ module apu #(
     end
 
     // DAC（4bit符号なし -> 符号反転した8bit符号付き -15, ..., -1, 0, 1, ..., 15 にマップされる）
+    // TODO: 音圧が小さいのでここで調整が必要
     function automatic signed [7:0] dac;
         input dac_enable;
         input [3:0] in;
@@ -345,7 +351,7 @@ module apu #(
     assign ex_l_signal = {{8{l_signal[7]}}, l_signal} <<< (SIGNAL_BIT_WIDTH - 8);
     assign ex_r_signal = {{8{r_signal[7]}}, r_signal} <<< (SIGNAL_BIT_WIDTH - 8);
 
-    // HPF適用
+    // HPF適用・オーディオ出力
     assign out_l = ex_l_signal - hpf_buffer_l;
     assign out_r = ex_r_signal - hpf_buffer_r;
     always @(posedge i_clk or negedge i_rst_n)
@@ -355,11 +361,17 @@ module apu #(
             o_r_signal <= 0;
             hpf_buffer_l <= 0;
             hpf_buffer_r <= 0;
+            audio_clk_count <= 1;
         end else begin
-            o_l_signal <= out_l;
-            o_r_signal <= out_r;
-            hpf_buffer_l <= ex_l_signal - ((out_l * HPF_COEFFIENT) >>> (SIGNAL_BIT_WIDTH - 1));
-            hpf_buffer_r <= ex_r_signal - ((out_r * HPF_COEFFIENT) >>> (SIGNAL_BIT_WIDTH - 1));
+            if (audio_clk_count >= AUDIO_OUTPUT_PERIOD) begin
+                o_l_signal <= out_l;
+                o_r_signal <= out_r;
+                hpf_buffer_l <= ex_l_signal - ((out_l * HPF_COEFFIENT) >>> (SIGNAL_BIT_WIDTH - 1));
+                hpf_buffer_r <= ex_r_signal - ((out_r * HPF_COEFFIENT) >>> (SIGNAL_BIT_WIDTH - 1));
+                audio_clk_count <= 1;
+            end else begin
+                audio_clk_count <= audio_clk_count + 1;
+            end
         end
     end
 

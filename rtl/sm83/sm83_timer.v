@@ -17,7 +17,7 @@ module sm83_timer #(
     // DIVレジスタがカウントアップする周期
     localparam DIVIDER_HZ = 16384;
     localparam DIVIDER_RATE_CLOCKS_INT = CLOCK_HZ / DIVIDER_HZ;
-    localparam DIVIDER_RATE_CLOCKS = DIVIDER_RATE_CLOCKS_INT[7:0];
+    localparam DIVIDER_RATE_CLOCKS = DIVIDER_RATE_CLOCKS_INT[15:0];
     // タイマーがカウントアップする周期
     localparam TIMER_HZ = 1048576;
     localparam TIMER_CLOCKS_INT = CLOCK_HZ / TIMER_HZ;
@@ -27,7 +27,7 @@ module sm83_timer #(
     localparam MASTER_CLOCKS_PER_VBLANK = 70224;
     localparam MASTER_CLOCK_HZ = 4194304;
     localparam VBLANK_CLOCKS_INT = (MASTER_CLOCKS_PER_VBLANK * CLOCK_HZ) / MASTER_CLOCK_HZ;
-    localparam VBLANK_CLOCKS = VBLANK_CLOCKS_INT[15:0];
+    localparam VBLANK_CLOCKS = VBLANK_CLOCKS_INT[23:0];
 
     // 各レジスタの書き込み信号
     wire div_write = i_we_register & (i_address == `HWREG_DIV_REGISTER);
@@ -42,11 +42,11 @@ module sm83_timer #(
     reg [7:0] tac_timer_control;
 
     // 内部カウンタ値
-    reg [7:0] div_clock_count;
+    reg [15:0] div_clock_count;
     reg timer_enable;
     reg [8:0] timer_increment_cycle;
     reg [8:0] timer_clock_count;
-    reg [15:0] vblank_clock_count;
+    reg [23:0] vblank_clock_count;
 
     // レジスタ読み取り
     always @(*) begin
@@ -76,9 +76,9 @@ module sm83_timer #(
         end else begin
             if (div_clock_count >= DIVIDER_RATE_CLOCKS) begin
                 div_register <= div_register + 8'd1;
-                div_clock_count <= 8'd1;
+                div_clock_count <= 16'd1;
             end else begin
-                div_clock_count <= div_clock_count + 8'd1;
+                div_clock_count <= div_clock_count + 16'd1;
             end
         end
     end
@@ -133,9 +133,9 @@ module sm83_timer #(
             vblank_clock_count <= 0;
         end else begin
             if (vblank_clock_count >= VBLANK_CLOCKS) begin
-                vblank_clock_count <= 16'd1;
+                vblank_clock_count <= 24'd1;
             end else begin
-                vblank_clock_count <= vblank_clock_count + 16'd1;
+                vblank_clock_count <= vblank_clock_count + 24'd1;
             end
         end
     end

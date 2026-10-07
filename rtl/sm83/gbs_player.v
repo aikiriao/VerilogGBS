@@ -2,7 +2,7 @@
 `include "sm83_register_address.vh"
 
 module gbs_player #(
-    parameter CLOCK_HZ = 1048576, // クロック動作周波数
+    parameter CLOCK_HZ = 4194304, // クロック動作周波数
     parameter SIGNAL_BIT_WIDTH = 16 // 出力信号のビット深度
 )(
     input wire i_clk, // クロック
@@ -69,6 +69,7 @@ module gbs_player #(
 
     // APU
     apu #(
+        .CLOCK_HZ(CLOCK_HZ),
         .SIGNAL_BIT_WIDTH(SIGNAL_BIT_WIDTH)
     ) apu (
         .i_clk(i_clk),
@@ -82,7 +83,9 @@ module gbs_player #(
     );
 
     // タイマー
-    sm83_timer timer (
+    sm83_timer #(
+        .CLOCK_HZ(CLOCK_HZ)
+    ) timer (
         .i_clk(i_clk),
         .i_rst_n(i_rst_n),
         .i_we_register(timer_we),
