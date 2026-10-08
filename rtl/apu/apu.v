@@ -338,7 +338,9 @@ module apu #(
             gain = $signed({1'b0, volume}) + 4'sd1;
             scaled = in * gain;
 
+            /* verilator lint_off WIDTHTRUNC */
             apply_master_volume = scaled >>> 3;
+            /* verilator lint_on WIDTHTRUNC */
         end
     endfunction
 
@@ -354,13 +356,14 @@ module apu #(
     function automatic signed [SIGNAL_BIT_WIDTH-1:0] update_hpf_buffer;
         input signed [SIGNAL_BIT_WIDTH-1:0] in;
         input signed [SIGNAL_BIT_WIDTH-1:0] out;
-        reg signed [(2 * SIGNAL_BIT_WIDTH) - 1:0] mul;
-        reg signed [(2 * SIGNAL_BIT_WIDTH)-1:0] next_buffer;
+        /* verilator lint_off UNUSEDSIGNAL */
+        reg signed [(2 * SIGNAL_BIT_WIDTH)-1:0] mul;
+        /* verilator lint_on UNUSEDSIGNAL */
 
         begin
             mul = out * HPF_COEFFIENT;
-            next_buffer = in - (mul >>> (SIGNAL_BIT_WIDTH - 1));
-            update_hpf_buffer = next_buffer[SIGNAL_BIT_WIDTH-1:0];
+            mul = mul >>> (SIGNAL_BIT_WIDTH - 1);
+            update_hpf_buffer = in - $signed(mul[SIGNAL_BIT_WIDTH-1:0]);
         end
     endfunction
 
