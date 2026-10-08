@@ -60,11 +60,13 @@ module test_gbs_player;
         end
     endtask
 
-    // ポケモン赤のテスト
-    task automatic gbs_player_pkred_test;
+    // GBSファイルの読み込み・プレイテスト
+    task automatic gbs_load_and_play_test(
+        input [8*128-1:0] gbs_image_path
+    );
         begin
             gbs_player_reset();
-            $readmemh("testdata/sm83/pkred_rom.hex", player.memory.rom);
+            $readmemh(gbs_image_path, player.memory.rom);
 
             // PCの設定
             player.cpu.pc = 16'h0000;
@@ -83,7 +85,7 @@ module test_gbs_player;
         clk = 0;
 
         gbs_player_reset();
-        gbs_player_pkred_test();
+        gbs_load_and_play_test("testdata/sm83/pkred_rom.hex");
 
         $fclose(fd);
         $finish;
