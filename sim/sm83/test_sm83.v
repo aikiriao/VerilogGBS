@@ -10,6 +10,7 @@ module test_sm83;
     reg rst_n;
     reg [7:0] memory[0:65535];
     reg [4:0] irq_pending;
+    reg mcycle_ce;
     wire [7:0] r_data;
     wire [15:0] address;
     wire [7:0] w_data;
@@ -22,6 +23,7 @@ module test_sm83;
         .i_clk(clk),
         .i_rst_n(rst_n),
         .i_r_data(r_data),
+        .i_mcycle_ce(mcycle_ce),
         .i_irq_pending(irq_pending),
         .o_address(address),
         .o_w_data(w_data),
@@ -44,6 +46,8 @@ module test_sm83;
             memory[address] <= w_data;
         end
     end
+
+    // 読み出しは非同期とする
     assign r_data = (re) ? memory[address] : 8'd0;
 
     // 8bitの乱数生成
@@ -243,10 +247,10 @@ module test_sm83;
                 cpu.a = imm8; 
                 sm83_set_r16mem(dst, imm16);
 
-                repeat (2) @(posedge clk);
+                repeat (4) @(posedge clk);
                 @(negedge clk);
 
-                `EXPECT_EQ(cpu.pc, 1); // PCは次の1を指す
+                `EXPECT_EQ(cpu.pc, 3);
                 `EXPECT_EQ(memory[imm16], imm8); // 意図された値が書き込まれているか
                 if (dst == R16MEM_HL_INC) begin
                     `EXPECT_EQ(cpu.get_r16(R16_HL), imm16 + 16'd1);
@@ -425,7 +429,6 @@ module test_sm83;
         input reg [15:0] src_v;
         input reg [15:0] hl_v;
         input reg carry;
-        input reg expected_zero;
         input reg expected_half_carry;
         input reg expected_carry;
 
@@ -446,8 +449,8 @@ module test_sm83;
             
             `EXPECT_EQ(cpu.pc, 1);
             `EXPECT_EQ(cpu.flags[FLAG_N], 0);
-            `EXPECT_EQ(cpu.get_r16(R16_HL), src_v + hl_v + carry);
-            `EXPECT_EQ(cpu.flags[FLAG_Z], expected_zero);
+            `EXPECT_EQ(cpu.get_r16(R16_HL), src_v + hl_v); // carryは無視される
+            `EXPECT_EQ(cpu.flags[FLAG_Z], 0); // ゼロフラグは更新されない
             `EXPECT_EQ(cpu.flags[FLAG_N], 0);
             `EXPECT_EQ(cpu.flags[FLAG_H], expected_half_carry);
             `EXPECT_EQ(cpu.flags[FLAG_C], expected_carry);
@@ -462,21 +465,21 @@ module test_sm83;
             // 境界値付近だけ攻める
             for (r16_src = 0; r16_src <= 2'd3; r16_src = r16_src + 1) begin
                 if (r16_src[1:0] !== R16_HL) begin
-                    sm83_add16_test_sub(r16_src[1:0], 16'h0000, 16'h0000, 0, 1, 0, 0);
-                    sm83_add16_test_sub(r16_src[1:0], 16'h0000, 16'h0000, 1, 0, 0, 0);
-                    sm83_add16_test_sub(r16_src[1:0], 16'h00FF, 16'h0001, 0, 0, 0, 0);
-                    sm83_add16_test_sub(r16_src[1:0], 16'h00FF, 16'h0000, 1, 0, 0, 0);
-                    sm83_add16_test_sub(r16_src[1:0], 16'hFFFF, 16'h0000, 0, 0, 0, 0);
-                    sm83_add16_test_sub(r16_src[1:0], 16'hFFFF, 16'h0000, 1, 1, 1, 1);
-                    sm83_add16_test_sub(r16_src[1:0], 16'hFFFF, 16'h0001, 0, 1, 1, 1);
+                    sm83_add16_test_sub(r16_src[1:0], 16'h0000, 16'h0000, 0, 0, 0);
+                    sm83_add16_test_sub(r16_src[1:0], 16'h0000, 16'h0000, 1, 0, 0);
+                    sm83_add16_test_sub(r16_src[1:0], 16'h00FF, 16'h0001, 0, 0, 0);
+                    sm83_add16_test_sub(r16_src[1:0], 16'h00FF, 16'h0000, 1, 0, 0);
+                    sm83_add16_test_sub(r16_src[1:0], 16'hFFFF, 16'h0000, 0, 0, 0);
+                    sm83_add16_test_sub(r16_src[1:0], 16'hFFFF, 16'h0000, 1, 0, 0);
+                    sm83_add16_test_sub(r16_src[1:0], 16'hFFFF, 16'h0001, 0, 1, 1);
                 end
             end
-            sm83_add16_test_sub(R16_HL, 16'h0000, 16'h0000, 0, 1, 0, 0);
-            sm83_add16_test_sub(R16_HL, 16'h0000, 16'h0000, 1, 0, 0, 0);
-            sm83_add16_test_sub(R16_HL, 16'h0100, 16'h0100, 0, 0, 0, 0);
-            sm83_add16_test_sub(R16_HL, 16'h0100, 16'h0100, 1, 0, 0, 0);
-            sm83_add16_test_sub(R16_HL, 16'hFFFF, 16'hFFFF, 0, 0, 1, 1);
-            sm83_add16_test_sub(R16_HL, 16'hFFFF, 16'hFFFF, 1, 0, 1, 1);
+            sm83_add16_test_sub(R16_HL, 16'h0000, 16'h0000, 0, 0, 0);
+            sm83_add16_test_sub(R16_HL, 16'h0000, 16'h0000, 1, 0, 0);
+            sm83_add16_test_sub(R16_HL, 16'h0100, 16'h0100, 0, 0, 0);
+            sm83_add16_test_sub(R16_HL, 16'h0100, 16'h0100, 1, 0, 0);
+            sm83_add16_test_sub(R16_HL, 16'hFFFF, 16'hFFFF, 0, 1, 1);
+            sm83_add16_test_sub(R16_HL, 16'hFFFF, 16'hFFFF, 1, 1, 1);
         end
     endtask
 
@@ -3155,18 +3158,22 @@ module test_sm83;
                 sm83_reset();
                 cpu.sp = initial_sp;
 
-                // PCをランダムにセット
-                random16(initial_pc);
-                cpu.pc = initial_pc;
-
                 // 割り込み要求を入力
                 irq_pending = irq;
                 cpu.ime = 1; // 割り込みを有効化
 
-                repeat (2) @(posedge clk);
+                // 割り込み処理に入ったかチェック
+                @(posedge clk); @(negedge clk);
+                `EXPECT_EQ(cpu.irq_active, irq_pending);
+
+                // PCをランダムにセット
+                random16(initial_pc);
+                cpu.pc = initial_pc;
+
+                repeat (4) @(posedge clk);
                 @(negedge clk);
 
-                // 2クロック後の次状態としてPC/ACKが設定される
+                // 4クロック後の次状態としてPC/ACKが設定される
                 `EXPECT_EQ(cpu.next_ime, 0);
                 casez (irq)
                     5'b????1: begin
@@ -3218,6 +3225,8 @@ module test_sm83;
         $dumpvars(0, test_sm83);
 
         clk = 0;
+
+        mcycle_ce = 1; // マシンサイクルは毎クロック動作するとする
 
         sm83_nop_test();
         sm83_ld16_imm16_test();

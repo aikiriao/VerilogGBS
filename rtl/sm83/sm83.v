@@ -381,7 +381,7 @@ module sm83 (
             end else if (mcycle == 8'd4) begin
                 // 割り込みフラグをクリアし、PCを更新
                 o_irq_ack = irq_active;
-                casez (irq_active)
+                case (irq_active)
                     5'b00001: next_pc = 16'h0040;
                     5'b00010: next_pc = 16'h0048;
                     5'b00100: next_pc = 16'h0050;
@@ -395,7 +395,7 @@ module sm83 (
                 next_mcycle = 8'd0;
             end
         end else if ((mcycle == 8'd0) && (irq_active != 5'd0)) begin
-            // 割り込み処理に以降
+            // 割り込み処理に移行
             next_irq_process = 1;
             next_mcycle = 8'd1;
         end else if (mcycle == 8'd0) begin
