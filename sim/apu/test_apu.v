@@ -17,7 +17,6 @@ module test_apu;
     integer clk_count;
 
     apu #(
-        .CLOCK_HZ(2097152),
         .SIGNAL_BIT_WIDTH(SIGNAL_BIT_WIDTH)
     ) apu (
         .i_clk(clk),
