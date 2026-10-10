@@ -117,7 +117,7 @@ module gbs_player #(
     );
 
     // メモリ
-    sm83_gbs_memory memory (
+    gbs_memory memory (
         .i_clk(i_clk),
         .i_rst_n(i_rst_n),
         .i_address(address),

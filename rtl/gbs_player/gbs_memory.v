@@ -1,7 +1,7 @@
 `timescale 1ns/1ns
 `include "sm83_register_address.vh"
 
-module sm83_gbs_memory #(
+module gbs_memory #(
     parameter ROM_ADDRESS_BITS = 22, // ROMアドレスビット幅
     parameter ROM_SIZE = (1 << ROM_ADDRESS_BITS)  // ROMメモリサイズ
 )(
