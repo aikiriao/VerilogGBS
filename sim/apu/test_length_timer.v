@@ -60,13 +60,13 @@ module test_length_timer;
             `ASSERT_EQ(timer.o_expired, 1);
             `ASSERT_EQ(timer.enable, 0);
             `ASSERT_EQ(timer.initial_timer_count, 8'd0);
-            `ASSERT_EQ(timer.timer_count, 16'd0);
+            `ASSERT_EQ(timer.timer_count, 16'd1);
             `ASSERT_EQ(timer.timeout, 16'd0);
             `ASSERT_EQ(timer.clk_count, 16'd1);
             `ASSERT_EQ(timer2.o_expired, 1);
             `ASSERT_EQ(timer2.enable, 0);
             `ASSERT_EQ(timer2.initial_timer_count, 8'd0);
-            `ASSERT_EQ(timer2.timer_count, 16'd0);
+            `ASSERT_EQ(timer2.timer_count, 16'd1);
             `ASSERT_EQ(timer2.timeout, 16'd0);
             `ASSERT_EQ(timer2.clk_count, 16'd1);
 
