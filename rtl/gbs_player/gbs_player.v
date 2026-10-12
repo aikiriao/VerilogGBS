@@ -2,6 +2,7 @@
 `include "sm83_register_address.vh"
 
 module gbs_player #(
+    parameter ROM_FILE = "", // 初期ROMファイル
     parameter CLOCK_HZ = 4194304, // クロック動作周波数
     parameter SIGNAL_BIT_WIDTH = 16 // 出力信号のビット深度
 )(
@@ -118,7 +119,9 @@ module gbs_player #(
     );
 
     // メモリ
-    gbs_memory memory (
+    gbs_memory #(
+        .ROM_FILE(ROM_FILE)
+    ) memory (
         .i_clk(i_clk),
         .i_rst_n(i_rst_n),
         .i_address(address),
@@ -128,4 +131,4 @@ module gbs_player #(
         .o_r_data(memory_r_data)
     );
 
-endmodule;
+endmodule

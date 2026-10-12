@@ -337,10 +337,9 @@ module apu #(
             // in * (volume + 1) / 8
             gain = $signed({1'b0, volume}) + 4'sd1;
             scaled = in * gain;
+            scaled = scaled >>> 3;
 
-            /* verilator lint_off WIDTHTRUNC */
-            apply_master_volume = scaled >>> 3;
-            /* verilator lint_on WIDTHTRUNC */
+            apply_master_volume = scaled[7:0];
         end
     endfunction
 
@@ -377,16 +376,16 @@ module apu #(
             o_r_signal <= 0;
             hpf_buffer_l <= 0;
             hpf_buffer_r <= 0;
-            audio_clk_count <= 1;
+            audio_clk_count <= 8'd1;
         end else begin
             if (audio_clk_count >= AUDIO_OUTPUT_PERIOD) begin
                 o_l_signal <= out_l;
                 o_r_signal <= out_r;
                 hpf_buffer_l <= update_hpf_buffer(ex_l_signal, out_l);
                 hpf_buffer_r <= update_hpf_buffer(ex_r_signal, out_r);
-                audio_clk_count <= 1;
+                audio_clk_count <= 8'd1;
             end else begin
-                audio_clk_count <= audio_clk_count + 1;
+                audio_clk_count <= audio_clk_count + 8'd1;
             end
         end
     end

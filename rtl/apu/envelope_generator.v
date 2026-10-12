@@ -42,13 +42,13 @@ module envelope_generator #(
     begin
         if (!i_rst_n) begin
             o_volume <= 0;
-            clk_count <= 1;
-            timer_count <= 1;
+            clk_count <= 24'd1;
+            timer_count <= 3'd1;
         end else if (i_trigger) begin
             // トリガー
             o_volume <= initial_volume;
-            clk_count <= 1;
-            timer_count <= 1;
+            clk_count <= 24'd1;
+            timer_count <= 3'd1;
         end else if (volume_sweep_pace != 0) begin
             // カウントアップ
             if (clk_count >= CLK_UPDATE_COUNT_PERIOD) begin
@@ -59,15 +59,15 @@ module envelope_generator #(
                     end else if ((o_volume == 4'hF) & volume_delta_direction) begin
                         o_volume <= 4'hF;
                     end else begin
-                        o_volume <= volume_delta_direction ? (o_volume + 1) : (o_volume - 1);
+                        o_volume <= volume_delta_direction ? (o_volume + 4'd1) : (o_volume - 4'd1);
                     end
-                    timer_count <= 1;
+                    timer_count <= 3'd1;
                 end else begin
-                    timer_count <= timer_count + 1;
+                    timer_count <= timer_count + 3'd1;
                 end
-                clk_count <= 1;
+                clk_count <= 24'd1;
             end else begin
-                clk_count <= clk_count + 1;
+                clk_count <= clk_count + 24'd1;
             end
         end
     end

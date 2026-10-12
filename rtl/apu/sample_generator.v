@@ -119,16 +119,16 @@ module sample_generator #(
     begin
         if (!i_rst_n) begin
             o_enable <= 0;
-            wave_ram_index <= 0;
-            clk_count <= 1;
-            sample_update_period <= 1;
-            sample_update_count <= 1;
+            wave_ram_index <= 5'd0;
+            clk_count <= 16'd1;
+            sample_update_period <= 16'd1;
+            sample_update_count <= 16'd1;
         end else if (trigger) begin
             // トリガー
             o_enable <= 1;
-            wave_ram_index <= 1;
-            clk_count <= 1;
-            sample_update_count <= 1;
+            wave_ram_index <= 5'd1;
+            clk_count <= 16'd1;
+            sample_update_count <= 16'd1;
             // トリガーと同時にピッチ周期上位ビットを設定する場合があるためピッチをこの場で計算
             sample_update_period <= 16'd2048 - {5'd0, i_period_high, period[7:0]};
         end else if (timer_expired | !o_dac_enable) begin
@@ -138,15 +138,15 @@ module sample_generator #(
             // カウントアップ
             if (clk_count >= CLK_UPDATE_COUNT_PERIOD) begin
                 if (sample_update_count >= sample_update_period) begin
-                    wave_ram_index <= wave_ram_index + 1;
+                    wave_ram_index <= wave_ram_index + 5'd1;
                     // 周期変更はサンプル更新後
                     sample_update_period <= 16'd2048 - {5'd0, period};
-                    sample_update_count <= 1;
+                    sample_update_count <= 16'd1;
                 end else begin
-                    sample_update_count <= sample_update_count + 1;
+                    sample_update_count <= sample_update_count + 16'd1;
                 end
             end else begin
-                clk_count <= clk_count + 1;
+                clk_count <= clk_count + 16'd1;
             end
         end
     end

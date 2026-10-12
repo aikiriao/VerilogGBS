@@ -58,37 +58,71 @@ if __name__ == "__main__":
             fout.write(f'// Timer Modulo: {timer_modulo:2X}\n')
             fout.write(f'// Timer Control: {timer_control:2X}\n')
 
-            # ブートストラップコード
-            fout.write(f'@0\n')
-            fout.write(f'// SPの設定 \n')
-            fout.write(f'31 {((stack_pointer >> 0) & 0xFF):02X} {((stack_pointer >> 8) & 0xFF):02X} // LD SP, {stack_pointer:04X} \n')
-            fout.write(f'// TMA/TACの設定 \n')
-            fout.write(f'3E {timer_modulo:02X} // LD A, {timer_modulo:02X} \n')
-            fout.write(f'E0 06 // LDH [0x06], A \n')
-            fout.write(f'3E {timer_control:02X} // LD A, {timer_control:02X} \n')
-            fout.write(f'E0 07 // LDH [0x07], A \n')
-            fout.write(f'// A（再生楽曲番号） ここを差し替えると楽曲を変えられる \n')
-            fout.write(f'3E {first_song:02X} // LD A, {first_song:02X} \n')
-            fout.write(f'// Initルーチン呼び出し \n')
-            fout.write(f'CD {((init_address >> 0) & 0xFF):02X} {((init_address >> 8) & 0xFF):02X} // CALL {init_address:04X} \n')
-            fout.write(f'// 割り込み有効 \n')
-            fout.write(f'3E 1F // LD A, 1F \n')
-            fout.write(f'E0 FF // LDH [0xFF], A \n')
-            fout.write(f'FB // EI \n')
-            fout.write(f'// 無限ループ（再生待機） \n')
-            fout.write(f'18 FE // JR -2 \n')
-            fout.write(f'// Playルーチンを割り込みに仕込む \n')
-            fout.write(f'@40\n')
-            fout.write(f'CD {((play_address >> 0) & 0xFF):02X} {((play_address >> 8) & 0xFF):02X} // CALL {play_address:04X} \n')
-            fout.write(f'D9 // RETI \n')
-            fout.write(f'@50\n')
-            fout.write(f'CD {((play_address >> 0) & 0xFF):02X} {((play_address >> 8) & 0xFF):02X} // CALL {play_address:04X} \n')
-            fout.write(f'D9 // RETI \n')
+            # EDAによっては@<address>形式のロードをサポートしていないので、先頭アドレスからのROMイメージを生成
+            rom_size = len(data) - 0x70 + load_address
+            rom = [0] * rom_size
+            rom[load_address:] = data[0x70:]
 
-            # ROMイメージ
-            fout.write(f'@{load_address:4X}\n')
-            rom_size = len(data) - 0x70
-            rom = data[0x70:]
+            # ブートストラップコードの書き込み
+            # スタックポインタの設定
+            # LD SP, stack_pointer
+            rom[0x00] = 0x31
+            rom[0x01] = (stack_pointer >> 0) & 0xFF
+            rom[0x02] = (stack_pointer >> 8) & 0xFF
+            # TMAの設定
+            # LD A, timer_modulo
+            rom[0x03] = 0x3E
+            rom[0x04] = timer_modulo
+            # LDH [0x06], A
+            rom[0x05] = 0xE0
+            rom[0x06] = 0x06
+            # TACの設定
+            # LD A, timer_control
+            rom[0x07] = 0x3E
+            rom[0x08] = timer_control
+            # LDH [0x07], A
+            rom[0x09] = 0xE0
+            rom[0x0A] = 0x07
+            # 再生楽曲番号をAに設定
+            # LD A, first_song
+            rom[0x0B] = 0x3E
+            rom[0x0C] = first_song
+            # Initルーチン呼び出し
+            # CALL init_address
+            rom[0x0D] = 0xCD
+            rom[0x0E] = (init_address >> 0) & 0xFF
+            rom[0x0F] = (init_address >> 8) & 0xFF
+            # 割り込み有効
+            # LD A, 0x1F
+            rom[0x10] = 0x3E
+            rom[0x11] = 0x1F
+            # LDH [0xFF], A
+            rom[0x12] = 0xE0
+            rom[0x13] = 0xFF
+            # EI
+            rom[0x14] = 0xFB
+            # 無限ループ（割り込み待ち）
+            # JR -2
+            rom[0x15] = 0x18
+            rom[0x16] = 0xFE
+
+            # 0x40に割込みルーチンを仕込む
+            # CALL play_address
+            rom[0x40] = 0xCD
+            rom[0x41] = (play_address >> 0) & 0xFF
+            rom[0x42] = (play_address >> 8) & 0xFF
+            # RETI
+            rom[0x43] = 0xD9
+
+            # 0x50に割り込みルーチンを仕込む
+            # CALL play_address
+            rom[0x50] = 0xCD
+            rom[0x51] = (play_address >> 0) & 0xFF
+            rom[0x52] = (play_address >> 8) & 0xFF
+            # RETI
+            rom[0x53] = 0xD9
+
+            # ROMイメージ書き出し
             i = 0;
             while i < rom_size:
                 for j in range(32):

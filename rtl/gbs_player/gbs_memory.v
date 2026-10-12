@@ -2,6 +2,7 @@
 `include "sm83_register_address.vh"
 
 module gbs_memory #(
+    parameter ROM_FILE = "", // 初期ROMファイル
     parameter ROM_ADDRESS_BITS = 22, // ROMアドレスビット幅
     parameter ROM_SIZE = (1 << ROM_ADDRESS_BITS)  // ROMメモリサイズ
 )(
@@ -32,14 +33,16 @@ module gbs_memory #(
     wire [14:0] ram_address = i_address[14:0] - ROM_END_ADDRESS[14:0];
     wire [21:0] rom_address = (i_address < `ROM_BANK1_START_ADDRESS) ? {6'd0, i_address} : {rom_bank, i_address[13:0]};
 
+    // ROM読み込み
+    initial begin
+        $readmemh(ROM_FILE, rom);
+    end
+
     // RAM
-    integer i;
     always @(posedge i_clk or negedge i_rst_n)
     begin
         if (!i_rst_n) begin
-            for (i = 0; i < 32768; i = i + 1) begin
-                ram[i] <= 8'd0;
-            end
+            // 何もしない
         end else if (ext_ram_write | ram_write) begin
             ram[ram_address] <= i_w_data;
         end

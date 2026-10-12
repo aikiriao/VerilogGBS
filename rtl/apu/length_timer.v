@@ -51,12 +51,12 @@ module length_timer #(
     begin
         if (!i_rst_n) begin
             o_expired <= 1;
-            clk_count <= 1;
-            timer_count <= 0;
+            clk_count <= 16'd1;
+            timer_count <= 16'd1;
         end else if (i_trigger) begin
             // トリガー
             o_expired <= 0;
-            clk_count <= 1;
+            clk_count <= 16'd1;
             timer_count <= {8'd0, initial_timer_count};
         end else if (enable & !o_expired) begin
             // カウントアップ
@@ -64,11 +64,11 @@ module length_timer #(
                 if (timer_count >= timeout) begin
                     o_expired <= 1;
                 end else begin
-                    clk_count <= 1;
-                    timer_count <= timer_count + 1;
+                    clk_count <= 16'd1;
+                    timer_count <= timer_count + 16'd1;
                 end
             end else begin
-                clk_count <= clk_count + 1;
+                clk_count <= clk_count + 16'd1;
             end
         end
     end

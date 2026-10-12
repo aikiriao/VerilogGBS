@@ -78,16 +78,11 @@ module noise_generator #(
             lfsr_mask <= 0;
         end else if (i_we_frequency_randomness) begin
             // 分周比周期
-            case (i_clock_divider)
-                3'd0: clk_div_period <= (i_clock_shift == 0) ? 0 : (1 << (i_clock_shift - 1));
-                3'd1: clk_div_period <= (1 << i_clock_shift);
-                3'd2: clk_div_period <= 2 * (1 << i_clock_shift);
-                3'd3: clk_div_period <= 3 * (1 << i_clock_shift);
-                3'd4: clk_div_period <= 4 * (1 << i_clock_shift);
-                3'd5: clk_div_period <= 5 * (1 << i_clock_shift);
-                3'd6: clk_div_period <= 6 * (1 << i_clock_shift);
-                3'd7: clk_div_period <= 7 * (1 << i_clock_shift);
-            endcase
+            if (i_clock_divider == 0) begin
+                clk_div_period <= (i_clock_shift == 0) ? 16'd0 : (16'd1 << (i_clock_shift - 1));
+            end else begin
+                clk_div_period <= {13'd0, i_clock_divider} << {12'd0, i_clock_shift};
+            end
             // LFSRのマスク
             lfsr_mask <= (i_lfsr_mode) ? 16'h8080 : 16'h8000;
         end
@@ -108,14 +103,14 @@ module noise_generator #(
     begin
         if (!i_rst_n) begin
             o_enable <= 0;
-            clk_count <= 1;
-            clk_div_count <= 1;
+            clk_count <= 16'd1;
+            clk_div_count <= 16'd1;
             lfsr <= 0;
         end else if (trigger) begin
             // トリガー
             o_enable <= 1;
-            clk_count <= 1;
-            clk_div_count <= 1;
+            clk_count <= 16'd1;
+            clk_div_count <= 16'd1;
             lfsr <= 0;
         end else if (timer_expired | !o_dac_enable) begin
             // タイマー時間切れ・DAC無効
@@ -126,13 +121,13 @@ module noise_generator #(
                 if (clk_div_count >= clk_div_period) begin
                     // LFSR状態更新
                     lfsr <= (lfsr[0] == lfsr[1]) ? ((lfsr | lfsr_mask) >> 1) : ((lfsr & (~lfsr_mask)) >> 1);
-                    clk_div_count <= 1;
+                    clk_div_count <= 16'd1;
                 end else begin
-                    clk_div_count <= clk_div_count + 1;
+                    clk_div_count <= clk_div_count + 16'd1;
                 end
-                clk_count <= 1;
+                clk_count <= 16'd1;
             end else begin
-                clk_count <= clk_count + 1;
+                clk_count <= clk_count + 16'd1;
             end
         end
     end

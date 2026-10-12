@@ -10,21 +10,21 @@ module top (
     output wire o_i2s_en // オーディオアンプ有効信号（Highアクティブ）
 );
 
-    localparam BITS_PER_WIDTH = 16;
+    localparam BITS_PER_SAMPLE = 16;
 
     wire clk_6m; // 1.5 MHzクロック生成用の6 MHzクロック
     wire clk_1p5m; // 約1.536 MHzのクロック
     wire data_req; // データ読み出し要求
     wire rst_n = ~i_rst;
-    reg signed [BITS_PER_WIDTH-1:0] l_signal;
-    reg signed [BITS_PER_WIDTH-1:0] r_signal;
+    wire signed [BITS_PER_SAMPLE-1:0] l_signal;
+    wire signed [BITS_PER_SAMPLE-1:0] r_signal;
 
     assign o_i2s_en = 1'b1; // オーディオアンプは常時有効
 
     Gowin_rPLL pll_27m_6m(
         .clkout(clk_6m),
         .reset(~rst_n),
-        .clkin(clk)
+        .clkin(i_clk)
     );
 
     Gowin_CLKDIV clk_div4(
@@ -34,9 +34,9 @@ module top (
     );
 
     // I2S送信器
-    i2s_transmitter i2s_tx #(
-        .BITS_PER_WIDTH(BITS_PER_WIDTH)
-    ) (
+    i2s_transmitter #(
+        .BITS_PER_SAMPLE(BITS_PER_SAMPLE)
+    ) i2s_tx (
         .i_clk(clk_1p5m), // ビットクロック
         .i_rst_n(rst_n), // 非同期リセット信号
         .i_l_data(l_signal), // 左チャンネルデータ
@@ -48,18 +48,15 @@ module top (
     );
 
     // GBSプレイヤー
-    gbs_player player #(
+    gbs_player #(
+        .ROM_FILE("testdata/sm83/pkred_rom.hex"),
         .CLOCK_HZ(6291456), // 6MHz FIXME: 本当に6MiHz？
-        .BITS_PER_WIDTH(BITS_PER_WIDTH)
-    ) (
+        .SIGNAL_BIT_WIDTH(BITS_PER_SAMPLE)
+    ) player (
         .i_clk(clk_6m), // クロック
         .i_rst_n(rst_n), // 非同期リセット信号
         .o_l_signal(l_signal),
         .o_r_signal(r_signal)
     );
-
-    initial begin
-        $readmemh("testdata/sm83/pkred_rom.hex", player.memory.rom);
-    end
 
 endmodule
