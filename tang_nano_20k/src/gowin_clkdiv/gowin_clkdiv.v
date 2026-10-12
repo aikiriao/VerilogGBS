@@ -1,11 +1,11 @@
-//Copyright (C)2014-2022 Gowin Semiconductor Corporation.
+//Copyright (C)2014-2025 Gowin Semiconductor Corporation.
 //All rights reserved.
 //File Title: IP file
-//GOWIN Version: V1.9.8.10
+//Tool Version: V1.9.11.03 Education
 //Part Number: GW2AR-LV18QN88C8/I7
 //Device: GW2AR-18
 //Device Version: C
-//Created Time: Wed Feb 08 16:48:04 2023
+//Created Time: Mon Oct 12 21:21:49 2026
 
 module Gowin_CLKDIV (clkout, hclkin, resetn);
 

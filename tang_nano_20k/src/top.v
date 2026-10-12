@@ -1,6 +1,6 @@
 module top (
     input wire i_clk, // クロック
-    input wire i_rst, // S1ボタン
+    input wire i_rst, // S2ボタン
     // TODO: S2ボタンに曲切り替えを割り当てる
 
     // オーディオインターフェース
@@ -22,15 +22,14 @@ module top (
     assign o_i2s_en = 1'b1; // オーディオアンプは常時有効
 
     Gowin_rPLL pll_27m_6m(
-        .clkout(clk_6m),
-        .reset(~rst_n),
-        .clkin(i_clk)
+        .clkin(i_clk),
+        .clkout(clk_6m)
     );
 
     Gowin_CLKDIV clk_div4(
-        .clkout(clk_1p5m), // 出力クロック
+        .resetn(rst_n), // Lowアクティブリセット
         .hclkin(clk_6m), // 入力クロック
-        .resetn(rst_n) // Lowアクティブリセット
+        .clkout(clk_1p5m) // 出力クロック
     );
 
     // I2S送信器
@@ -50,10 +49,10 @@ module top (
     // GBSプレイヤー
     gbs_player #(
         .ROM_FILE("testdata/sm83/pkred_rom.hex"),
-        .CLOCK_HZ(6291456), // 6MHz FIXME: 本当に6MiHz？
+        .CLOCK_HZ(27_000_000),
         .SIGNAL_BIT_WIDTH(BITS_PER_SAMPLE)
     ) player (
-        .i_clk(clk_6m), // クロック
+        .i_clk(i_clk), // クロック
         .i_rst_n(rst_n), // 非同期リセット信号
         .o_l_signal(l_signal),
         .o_r_signal(r_signal)

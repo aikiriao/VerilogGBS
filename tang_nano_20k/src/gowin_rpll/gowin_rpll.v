@@ -1,16 +1,15 @@
-//Copyright (C)2014-2022 Gowin Semiconductor Corporation.
+//Copyright (C)2014-2025 Gowin Semiconductor Corporation.
 //All rights reserved.
 //File Title: IP file
-//GOWIN Version: V1.9.8.10
+//Tool Version: V1.9.11.03 Education
 //Part Number: GW2AR-LV18QN88C8/I7
 //Device: GW2AR-18
 //Device Version: C
-//Created Time: Thu Mar 30 01:20:17 2023
+//Created Time: Mon Oct 12 21:21:10 2026
 
-module Gowin_rPLL (clkout, reset, clkin);
+module Gowin_rPLL (clkout, clkin);
 
 output clkout;
-input reset;
 input clkin;
 
 wire lock_o;
@@ -27,7 +26,7 @@ rPLL rpll_inst (
     .CLKOUTP(clkoutp_o),
     .CLKOUTD(clkoutd_o),
     .CLKOUTD3(clkoutd3_o),
-    .RESET(reset),
+    .RESET(gw_gnd),
     .RESET_P(gw_gnd),
     .CLKIN(clkin),
     .CLKFB(gw_gnd),
@@ -41,11 +40,11 @@ rPLL rpll_inst (
 
 defparam rpll_inst.FCLKIN = "27";
 defparam rpll_inst.DYN_IDIV_SEL = "false";
-defparam rpll_inst.IDIV_SEL = 5;
+defparam rpll_inst.IDIV_SEL = 8;
 defparam rpll_inst.DYN_FBDIV_SEL = "false";
-defparam rpll_inst.FBDIV_SEL = 0;
+defparam rpll_inst.FBDIV_SEL = 1;
 defparam rpll_inst.DYN_ODIV_SEL = "false";
-defparam rpll_inst.ODIV_SEL = 112;
+defparam rpll_inst.ODIV_SEL = 96;
 defparam rpll_inst.PSDA_SEL = "0000";
 defparam rpll_inst.DYN_DA_EN = "true";
 defparam rpll_inst.DUTYDA_SEL = "1000";
