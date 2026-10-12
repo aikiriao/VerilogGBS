@@ -65,13 +65,9 @@ module test_gbs_player;
         input [8*128-1:0] gbs_image_path
     );
         begin
-            gbs_player_reset();
             $readmemh(gbs_image_path, player.memory.rom);
 
-            // PCの設定
-            player.cpu.pc = 16'h0000;
-            // FIXME: タイミングが悪いと先頭の命令の読み込みが間に合わないので
-            player.clk_div = 2'd1;
+            gbs_player_reset();
 
             repeat (1000000) @(posedge clk);
         end

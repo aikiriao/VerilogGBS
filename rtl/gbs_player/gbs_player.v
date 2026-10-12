@@ -50,7 +50,8 @@ module gbs_player #(
     // クロック分周パルス生成
     always @(posedge i_clk or negedge i_rst_n) begin
         if (!i_rst_n) begin
-            clk_div <= 2'd0;
+            // 1クロック分ずらす（リセット直後に動くとNOPを読み込んでPCが進んでしまうため）
+            clk_div <= 2'd1;
         end else begin
             clk_div <= clk_div + 2'd1;
         end
