@@ -1,0 +1,25 @@
+<?xml version="1" encoding="UTF-8"?>
+<!DOCTYPE gowin-fpga-project>
+<Project>
+    <Template>FPGA</Template>
+    <Version>5</Version>
+    <Device name="GW2AR-18C" pn="GW2AR-LV18QN88C8/I7">gw2ar18c-000</Device>
+    <FileList>
+        <File path="rtl/apu/apu.v" type="file.verilog" enable="1"/>
+        <File path="rtl/apu/envelope_generator.v" type="file.verilog" enable="1"/>
+        <File path="rtl/apu/length_timer.v" type="file.verilog" enable="1"/>
+        <File path="rtl/apu/noise_generator.v" type="file.verilog" enable="1"/>
+        <File path="rtl/apu/pulse_generator.v" type="file.verilog" enable="1"/>
+        <File path="rtl/apu/sample_generator.v" type="file.verilog" enable="1"/>
+        <File path="rtl/gbs_player/gbs_memory.v" type="file.verilog" enable="1"/>
+        <File path="rtl/gbs_player/gbs_player.v" type="file.verilog" enable="1"/>
+        <File path="rtl/i2s_transmitter/i2s_transmitter.v" type="file.verilog" enable="1"/>
+        <File path="rtl/sm83/sm83.v" type="file.verilog" enable="1"/>
+        <File path="rtl/sm83/sm83_irq_controller.v" type="file.verilog" enable="1"/>
+        <File path="rtl/sm83/sm83_timer.v" type="file.verilog" enable="1"/>
+        <File path="tang_nano_20k/src/gowin_clkdiv/gowin_clkdiv.v" type="file.verilog" enable="1"/>
+        <File path="tang_nano_20k/src/gowin_rpll/gowin_rpll.v" type="file.verilog" enable="1"/>
+        <File path="tang_nano_20k/src/top.v" type="file.verilog" enable="1"/>
+        <File path="tang_nano_20k/src/gbs_player.cst" type="file.cst" enable="1"/>
+    </FileList>
+</Project>
