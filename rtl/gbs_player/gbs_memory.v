@@ -33,9 +33,10 @@ module gbs_memory #(
     wire [14:0] ram_address = i_address[14:0] - ROM_END_ADDRESS[14:0];
     wire [21:0] rom_address = (i_address < `ROM_BANK1_START_ADDRESS) ? {6'd0, i_address} : {rom_bank, i_address[13:0]};
 
-    // ROM読み込み
+    // メモリ初期化
     initial begin
         $readmemh(ROM_FILE, rom);
+        $readmemh("testdata/sm83/initial_ram.hex", ram);
     end
 
     // RAM
