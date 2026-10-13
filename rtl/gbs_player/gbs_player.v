@@ -3,6 +3,7 @@
 
 module gbs_player #(
     parameter ROM_FILE = "", // 初期ROMファイル
+    parameter ROM_ADDRESS_BITS = 22, // ROMアドレスビット幅
     parameter CLOCK_HZ = 4194304, // クロック動作周波数
     parameter SIGNAL_BIT_WIDTH = 16 // 出力信号のビット深度
 )(
@@ -120,7 +121,8 @@ module gbs_player #(
 
     // メモリ
     gbs_memory #(
-        .ROM_FILE(ROM_FILE)
+        .ROM_FILE(ROM_FILE),
+        .ROM_ADDRESS_BITS(ROM_ADDRESS_BITS)
     ) memory (
         .i_clk(i_clk),
         .i_rst_n(i_rst_n),

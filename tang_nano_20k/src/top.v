@@ -49,6 +49,7 @@ module top (
     // GBSプレイヤー
     gbs_player #(
         .ROM_FILE("testdata/sm83/pkred_rom.hex"),
+        .ROM_ADDRESS_BITS(16),
         .CLOCK_HZ(27_000_000),
         .SIGNAL_BIT_WIDTH(BITS_PER_SAMPLE)
     ) player (

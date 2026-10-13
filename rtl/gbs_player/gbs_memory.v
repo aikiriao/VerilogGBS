@@ -3,8 +3,7 @@
 
 module gbs_memory #(
     parameter ROM_FILE = "", // 初期ROMファイル
-    parameter ROM_ADDRESS_BITS = 22, // ROMアドレスビット幅
-    parameter ROM_SIZE = (1 << ROM_ADDRESS_BITS)  // ROMメモリサイズ
+    parameter ROM_ADDRESS_BITS = 22 // ROMアドレスビット幅
 )(
     input wire i_clk, // クロック
     input wire i_rst_n, // 非同期リセット
@@ -16,9 +15,10 @@ module gbs_memory #(
 );
     // ROM終端アドレス
     localparam ROM_END_ADDRESS = `VRAM_START_ADDRESS;
+    localparam ROM_SIZE = (1 << ROM_ADDRESS_BITS);  // ROMメモリサイズ
 
     reg [7:0] ram[0:32767]; // RAM(32KiB)
-    reg [7:0] rom[0:ROM_SIZE - 1]; // ROM
+    reg [7:0] rom[0:ROM_SIZE-1]; // ROM
     reg [7:0] rom_bank; // ROMバンク番号
     reg [3:0] ramg; // RAMG
 
@@ -31,7 +31,7 @@ module gbs_memory #(
 
     // RAM/ROMアドレス
     wire [14:0] ram_address = i_address[14:0] - ROM_END_ADDRESS[14:0];
-    wire [21:0] rom_address = (i_address < `ROM_BANK1_START_ADDRESS) ? {6'd0, i_address} : {rom_bank, i_address[13:0]};
+    wire [ROM_ADDRESS_BITS-1:0] rom_address = (i_address < `ROM_BANK1_START_ADDRESS) ? {6'd0, i_address} : {rom_bank, i_address[13:0]};
 
     // メモリ初期化
     initial begin
