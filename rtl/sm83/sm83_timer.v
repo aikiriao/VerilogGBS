@@ -24,9 +24,9 @@ module sm83_timer #(
     localparam TIMER_CLOCKS = TIMER_CLOCKS_INT[8:0];
     // VBlank周期
     // VBlankあたりのマスタークロック数（PPUの1ライン456cycles x 1フレーム154ラインから）
-    localparam MASTER_CLOCKS_PER_VBLANK = 70224;
-    localparam MASTER_CLOCK_HZ = 4194304;
-    localparam VBLANK_CLOCKS_INT = (MASTER_CLOCKS_PER_VBLANK * CLOCK_HZ) / MASTER_CLOCK_HZ;
+    localparam [63:0] MASTER_CLOCKS_PER_VBLANK = 70224;
+    localparam [63:0] MASTER_CLOCK_HZ = 4194304;
+    localparam [63:0] VBLANK_CLOCKS_INT = (MASTER_CLOCKS_PER_VBLANK * CLOCK_HZ) / MASTER_CLOCK_HZ;
     localparam VBLANK_CLOCKS = VBLANK_CLOCKS_INT[23:0];
 
     // 各レジスタの書き込み信号
