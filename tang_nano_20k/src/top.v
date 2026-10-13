@@ -1,7 +1,7 @@
 module top (
     input wire i_clk, // クロック
     input wire i_rst, // S2ボタン
-    // TODO: S2ボタンに曲切り替えを割り当てる
+    // TODO: S1ボタンに曲切り替えを割り当てる
 
     // オーディオインターフェース
     output wire o_i2s_bck, // 1.536 MHzクロックと同じ
@@ -49,7 +49,6 @@ module top (
     // GBSプレイヤー
     gbs_player #(
         .ROM_FILE("testdata/sm83/pkred_rom.hex"),
-        .ROM_ADDRESS_BITS(16),
         .CLOCK_HZ(27_000_000),
         .SIGNAL_BIT_WIDTH(BITS_PER_SAMPLE)
     ) player (
