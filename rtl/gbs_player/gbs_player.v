@@ -29,9 +29,9 @@ module gbs_player #(
     wire cpu_we;
     wire cpu_re;
     wire cpu_we_pulse = cpu_we & mcycle_tick;
-    wire apu_address = ((address >= `HWREG_NR10_CHANNEL1_SWEEP) && (address < `HWREG_NR34_CHANNEL3_PERIOD_HIGH_CONTROL))
+    wire apu_address = ((address >= `HWREG_NR10_CHANNEL1_SWEEP) && (address <= `HWREG_NR34_CHANNEL3_PERIOD_HIGH_CONTROL))
                     || ((address >= `HWREG_NR41_CHANNEL4_LENGTH_TIMER) && (address <= `HWREG_NR52_AUDIO_MASTER_CONTROL))
-                    || ((address >= `HWREG_CHANNEL3_WAVE_PATTERN_RAM_START) && (address <= `HWREG_CHANNEL3_WAVE_PATTERN_RAM_START));
+                    || ((address >= `HWREG_CHANNEL3_WAVE_PATTERN_RAM_START) && (address <= `HWREG_CHANNEL3_WAVE_PATTERN_RAM_END));
     wire apu_we = cpu_we_pulse & apu_address;
     wire [7:0] apu_r_data;
     wire timer_address = (address >= `HWREG_DIV_REGISTER) && (address <= `HWREG_TAC_TIMER_CONTROL);
