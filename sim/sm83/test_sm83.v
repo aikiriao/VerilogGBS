@@ -10,7 +10,7 @@ module test_sm83;
     reg rst_n;
     reg [7:0] memory[0:65535];
     reg [4:0] irq_pending;
-    reg mcycle_ce;
+    reg mcycle_tick;
     wire [7:0] r_data;
     wire [15:0] address;
     wire [7:0] w_data;
@@ -22,8 +22,8 @@ module test_sm83;
     sm83 cpu (
         .i_clk(clk),
         .i_rst_n(rst_n),
+        .i_mcycle_tick(mcycle_tick),
         .i_r_data(r_data),
-        .i_mcycle_ce(mcycle_ce),
         .i_irq_pending(irq_pending),
         .o_address(address),
         .o_w_data(w_data),
@@ -3226,7 +3226,7 @@ module test_sm83;
 
         clk = 0;
 
-        mcycle_ce = 1; // マシンサイクルは毎クロック動作するとする
+        mcycle_tick = 1; // マシンサイクルは毎クロック動作するとする
 
         sm83_nop_test();
         sm83_ld16_imm16_test();

@@ -1,11 +1,10 @@
 `timescale 1ns/1ns
 `include "sm83_register_address.vh"
 
-module sm83_timer #(
-    parameter CLOCK_HZ = 1048576 // クロック動作周波数
-)(
+module sm83_timer (
     input wire i_clk, // クロック
     input wire i_rst_n, // 非同期リセット
+    input wire i_mcycle_tick, // M-Cycleティック信号
     input wire i_we_register, // レジスタ書き込みイネーブル
     input wire [15:0] i_address, // アドレス
     input wire [7:0] i_w_data, // 書き込みデータ
@@ -13,21 +12,16 @@ module sm83_timer #(
     output wire o_timer_irq, // タイマー割り込み
     output wire o_vblank_irq // VBlank割り込み
 );
+    localparam MCYCLE_CLOCK_HZ = 1048576;
 
     // DIVレジスタがカウントアップする周期
     localparam DIVIDER_HZ = 16384;
-    localparam DIVIDER_RATE_CLOCKS_INT = CLOCK_HZ / DIVIDER_HZ;
+    localparam DIVIDER_RATE_CLOCKS_INT = MCYCLE_CLOCK_HZ / DIVIDER_HZ;
     localparam DIVIDER_RATE_CLOCKS = DIVIDER_RATE_CLOCKS_INT[15:0];
-    // タイマーがカウントアップする周期
-    localparam TIMER_HZ = 1048576;
-    localparam TIMER_CLOCKS_INT = CLOCK_HZ / TIMER_HZ;
-    localparam TIMER_CLOCKS = TIMER_CLOCKS_INT[8:0];
     // VBlank周期
-    // VBlankあたりのマスタークロック数（PPUの1ライン456cycles x 1フレーム154ラインから）
-    localparam [63:0] MASTER_CLOCKS_PER_VBLANK = 70224;
-    localparam [63:0] MASTER_CLOCK_HZ = 4194304;
-    localparam [63:0] VBLANK_CLOCKS_INT = (MASTER_CLOCKS_PER_VBLANK * CLOCK_HZ) / MASTER_CLOCK_HZ;
-    localparam VBLANK_CLOCKS = VBLANK_CLOCKS_INT[23:0];
+    // VBlankあたりのMCycleクロック数（PPUの1ライン456T-Cycles x 1フレーム154ライン=70224T-Cycleから）
+    localparam MCYCLE_CLOCKS_PER_VBLANK = 70224 / 4;
+    localparam VBLANK_CLOCKS = MCYCLE_CLOCKS_PER_VBLANK[23:0];
 
     // 各レジスタの書き込み信号
     wire div_write = i_we_register & (i_address == `HWREG_DIV_REGISTER);
@@ -73,7 +67,7 @@ module sm83_timer #(
         end else if (div_write) begin
             // どの値の書き込みでも0にリセット
             div_register <= 0;
-        end else begin
+        end else if (i_mcycle_tick) begin
             if (div_clock_count >= DIVIDER_RATE_CLOCKS) begin
                 div_register <= div_register + 8'd1;
                 div_clock_count <= 16'd1;
@@ -101,12 +95,12 @@ module sm83_timer #(
             tac_timer_control <= i_w_data;
             timer_enable <= ((i_w_data & 8'h4) != 0);
             case (i_w_data[1:0])
-                2'd0: timer_increment_cycle <= 9'd256 * TIMER_CLOCKS;
-                2'd1: timer_increment_cycle <= 9'd4 * TIMER_CLOCKS;
-                2'd2: timer_increment_cycle <= 9'd16 * TIMER_CLOCKS;
-                2'd3: timer_increment_cycle <= 9'd64 * TIMER_CLOCKS;
+                2'd0: timer_increment_cycle <= 9'd256;
+                2'd1: timer_increment_cycle <= 9'd4;
+                2'd2: timer_increment_cycle <= 9'd16;
+                2'd3: timer_increment_cycle <= 9'd64;
             endcase
-        end else if (timer_enable) begin
+        end else if (timer_enable & i_mcycle_tick) begin
             if (timer_clock_count >= timer_increment_cycle) begin
                 // 8bitの意味でオーバーフロー
                 if (tima_timer_counter == 8'hFF) begin
@@ -124,14 +118,14 @@ module sm83_timer #(
 
     // タイマー割り込み要求
     // タイマーのオーバーフロー後に割り込み要求が入る
-    assign o_timer_irq = timer_enable & (timer_clock_count == 9'd1) & (tima_timer_counter == tma_timer_modulo);
+    assign o_timer_irq = timer_enable & i_mcycle_tick & (timer_clock_count == 9'd1) & (tima_timer_counter == tma_timer_modulo);
 
     // VBlankタイマー更新
     always @(posedge i_clk or negedge i_rst_n)
     begin
         if (!i_rst_n) begin
             vblank_clock_count <= 0;
-        end else begin
+        end else if (i_mcycle_tick) begin
             if (vblank_clock_count >= VBLANK_CLOCKS) begin
                 vblank_clock_count <= 24'd1;
             end else begin
@@ -141,6 +135,6 @@ module sm83_timer #(
     end
 
     // VBlank割り込み要求
-    assign o_vblank_irq = (vblank_clock_count >= VBLANK_CLOCKS);
+    assign o_vblank_irq = i_mcycle_tick & (vblank_clock_count >= VBLANK_CLOCKS);
 
 endmodule

@@ -1,10 +1,9 @@
 `timescale 1ns/1ns
 
-module sample_generator #(
-    parameter CLOCK_HZ = 2097152 // クロック動作周波数
-)(
+module sample_generator (
     input wire i_clk, // クロック
     input wire i_rst_n, // 非同期リセット
+    input wire i_tcycle_tick, // T-Cycleクロックティック
     input wire i_we_dac_enable, // DAC有効フラグセット
     input wire i_dac_enable, // DAC有効フラグ
     input wire i_we_length_timer, // 長さタイマーセット
@@ -26,8 +25,9 @@ module sample_generator #(
     output wire [3:0] o_signal // 出力信号
 );
 
+    localparam TCYCLE_CLOCK_HZ = 4194304; // T-Cycleのクロックティック信号
     localparam SAMPLE_GENERATOR_CLOCK_HZ = 2097152; // サンプルジェネレータのクロック動作周波数
-    localparam CLK_UPDATE_COUNT_PERIOD_INT = CLOCK_HZ / SAMPLE_GENERATOR_CLOCK_HZ; // クロックの更新周期
+    localparam CLK_UPDATE_COUNT_PERIOD_INT = TCYCLE_CLOCK_HZ / SAMPLE_GENERATOR_CLOCK_HZ; // クロックの更新周期
     localparam [15:0] CLK_UPDATE_COUNT_PERIOD = CLK_UPDATE_COUNT_PERIOD_INT[15:0]; // クロックの更新周期
 
     wire trigger; // トリガー信号
@@ -42,11 +42,10 @@ module sample_generator #(
     reg [3:0] wave_ram[0:31]; // 波形RAM 4bit x 32サンプル
     reg [4:0] wave_ram_index; // 波形RAM参照インデックス
 
-    length_timer #(
-        .CLOCK_HZ(CLOCK_HZ)
-    ) timer (
+    length_timer timer (
         .i_clk(i_clk),
         .i_rst_n(i_rst_n),
+        .i_tcycle_tick(i_tcycle_tick),
         .i_we_enable(i_we_period_high_control),
         .i_enable(i_length_timer_enable),
         .i_we_length_timer(i_we_length_timer),
@@ -134,7 +133,7 @@ module sample_generator #(
         end else if (timer_expired | !o_dac_enable) begin
             // タイマー時間切れ・DAC無効
             o_enable <= 0;
-        end else if (o_enable) begin
+        end else if (o_enable & i_tcycle_tick) begin
             // カウントアップ
             if (clk_count >= CLK_UPDATE_COUNT_PERIOD) begin
                 if (sample_update_count >= sample_update_period) begin
@@ -145,6 +144,7 @@ module sample_generator #(
                 end else begin
                     sample_update_count <= sample_update_count + 16'd1;
                 end
+                clk_count <= 16'd1;
             end else begin
                 clk_count <= clk_count + 16'd1;
             end

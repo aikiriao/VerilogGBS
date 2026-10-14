@@ -3,9 +3,11 @@
 
 module test_pulse_generator;
     parameter STEP = 10;
+    localparam CLK_UPDATE_COUNT_PERIOD = 4194304 / 1048576;
 
     reg clk;
     reg rst_n;
+    reg tcycle_tick;
     reg we_period_sweep;
     reg we_length_timer_duty_ratio;
     reg we_volume_envelope;
@@ -29,11 +31,10 @@ module test_pulse_generator;
     wire enable;
     wire dac_enable;
 
-    pulse_generator #(
-        .CLOCK_HZ(1048576)
-    ) pg (
+    pulse_generator pg (
         .i_clk(clk),
         .i_rst_n(rst_n),
+        .i_tcycle_tick(tcycle_tick),
         .i_we_period_sweep(we_period_sweep),
         .i_period_sweep_pace(period_sweep_pace),
         .i_period_sweep_direction(period_sweep_direction),
@@ -206,7 +207,8 @@ module test_pulse_generator;
                 // 念のため2周分
                 for (i = 0; i < 16; i = i + 1) begin
                     // 次のクロックの値を確定
-                    @(posedge clk); @(negedge clk);
+                    repeat (CLK_UPDATE_COUNT_PERIOD) @(posedge clk);
+                    @(negedge clk);
                     // トリガー直後でインデックスが1進んでいるため+1して比較
                     `EXPECT_EQ(pg.o_signal, pg.pulse_table(d[1:0], i[2:0] + 1) ? 4'hF : 0);
                     `EXPECT_EQ(signal, pg.pulse_table(d[1:0], i[2:0] + 1) ? 4'hF : 0);
@@ -258,6 +260,8 @@ module test_pulse_generator;
         $dumpfile("build/test_pulse_generator.vcd");
         $dumpvars(0, test_pulse_generator);
 
+
+        tcycle_tick = 1;
         clk = 0;
 
         pg_duty_ratio_test();

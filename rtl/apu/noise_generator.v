@@ -1,10 +1,9 @@
 `timescale 1ns/1ns
 
-module noise_generator #(
-    parameter CLOCK_HZ = 2097152 // クロック動作周波数
-)(
+module noise_generator (
     input wire i_clk, // クロック
     input wire i_rst_n, // 非同期リセット
+    input wire i_tcycle_tick, // T-Cycleクロックティック
     input wire i_we_length_timer, // 長さタイマーセット
     input wire [5:0] i_initial_timer, // 長さタイマーの初期タイマー値
     input wire i_we_volume_envelope, // エンベロープセット
@@ -23,8 +22,9 @@ module noise_generator #(
     output wire [3:0] o_signal // 出力信号
 );
 
+    localparam TCYCLE_CLOCK_HZ = 4194304; // T-Cycleのクロックティック信号
     localparam NOISE_GENERATOR_CLOCK_HZ = 262144; // ノイズジェネレータのクロック動作周波数
-    localparam CLK_UPDATE_COUNT_PERIOD_INT = CLOCK_HZ / NOISE_GENERATOR_CLOCK_HZ;
+    localparam CLK_UPDATE_COUNT_PERIOD_INT = TCYCLE_CLOCK_HZ / NOISE_GENERATOR_CLOCK_HZ;
     localparam [15:0] CLK_UPDATE_COUNT_PERIOD = CLK_UPDATE_COUNT_PERIOD_INT[15:0]; // クロックの更新周期
 
     wire trigger; // トリガー信号
@@ -38,11 +38,10 @@ module noise_generator #(
     reg [15:0] lfsr_mask; // LFSRのマスク
     reg [15:0] lfsr; // LFSRの内部状態レジスタ
 
-    envelope_generator #(
-        .CLOCK_HZ(CLOCK_HZ)
-    ) eg (
+    envelope_generator eg (
         .i_clk(i_clk),
         .i_rst_n(i_rst_n),
+        .i_tcycle_tick(i_tcycle_tick),
         .i_we(i_we_volume_envelope),
         .i_volume_delta_direction(i_volume_delta_direction),
         .i_initial_volume(i_initial_volume),
@@ -51,11 +50,10 @@ module noise_generator #(
         .o_volume(eg_volume)
     );
 
-    length_timer #(
-        .CLOCK_HZ(CLOCK_HZ)
-    ) timer (
+    length_timer timer (
         .i_clk(i_clk),
         .i_rst_n(i_rst_n),
+        .i_tcycle_tick(i_tcycle_tick),
         .i_we_enable(i_we_control),
         .i_enable(i_length_timer_enable),
         .i_we_length_timer(i_we_length_timer),
@@ -115,7 +113,7 @@ module noise_generator #(
         end else if (timer_expired | !o_dac_enable) begin
             // タイマー時間切れ・DAC無効
             o_enable <= 0;
-        end else if (o_enable) begin
+        end else if (o_enable & i_tcycle_tick) begin
             // カウントアップ
             if (clk_count >= CLK_UPDATE_COUNT_PERIOD) begin
                 if (clk_div_count >= clk_div_period) begin

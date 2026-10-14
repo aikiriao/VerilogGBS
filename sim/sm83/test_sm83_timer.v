@@ -8,6 +8,7 @@ module test_sm83_timer;
 
     reg clk;
     reg rst_n;
+    reg mcycle_tick;
     reg we_register;
     reg [15:0] address;
     reg [7:0] w_data;
@@ -16,11 +17,10 @@ module test_sm83_timer;
     wire vblank_irq;
     integer vblank_count;
 
-    sm83_timer #(
-        .CLOCK_HZ(TIMER_CLOCK_HZ)
-    ) timer (
+    sm83_timer timer (
         .i_clk(clk),
         .i_rst_n(rst_n),
+        .i_mcycle_tick(mcycle_tick),
         .i_we_register(we_register),
         .i_address(address),
         .i_w_data(w_data),
@@ -182,6 +182,7 @@ module test_sm83_timer;
         $dumpfile("build/test_sm83_timer.vcd");
         $dumpvars(0, test_sm83_timer);
 
+        mcycle_tick = 1;
         clk = 0;
 
         sm83_timer_reset();

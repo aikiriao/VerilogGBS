@@ -1,10 +1,9 @@
 `timescale 1ns/1ns
 
-module pulse_generator #(
-    parameter CLOCK_HZ = 2097152 // クロック動作周波数
-)(
+module pulse_generator (
     input wire i_clk, // クロック
     input wire i_rst_n, // 非同期リセット
+    input wire i_tcycle_tick, // T-Cycleクロックティック信号
     input wire i_we_period_sweep, // スイープセット
     input wire [2:0] i_period_sweep_pace, // スイープ速度
     input wire i_period_sweep_direction, // スイープ方向（0: 正, 1: 負）
@@ -27,18 +26,19 @@ module pulse_generator #(
     output wire [3:0] o_signal // 出力信号
 );
 
+    localparam TCYCLE_CLOCK_HZ = 4194304; // T-Cycleのクロックティック信号
     localparam PULSE_GENERATOR_CLOCK_HZ = 1048576; // パルスジェネレータのクロック動作周波数
-    localparam CLK_UPDATE_COUNT_PERIOD_INT = CLOCK_HZ / PULSE_GENERATOR_CLOCK_HZ; // クロックの更新周期
+    localparam CLK_UPDATE_COUNT_PERIOD_INT = TCYCLE_CLOCK_HZ / PULSE_GENERATOR_CLOCK_HZ; // クロックの更新周期
     localparam [15:0] CLK_UPDATE_COUNT_PERIOD = CLK_UPDATE_COUNT_PERIOD_INT[15:0]; // クロックの更新周期
     localparam SWEEP_UPDATE_PERIOD_UNIT_HZ = 128; // スイープの更新頻度単位
 
-    localparam UPDATE_PERIOD1 = CLOCK_HZ / (1 * SWEEP_UPDATE_PERIOD_UNIT_HZ);
-    localparam UPDATE_PERIOD2 = CLOCK_HZ / (2 * SWEEP_UPDATE_PERIOD_UNIT_HZ);
-    localparam UPDATE_PERIOD3 = CLOCK_HZ / (3 * SWEEP_UPDATE_PERIOD_UNIT_HZ);
-    localparam UPDATE_PERIOD4 = CLOCK_HZ / (4 * SWEEP_UPDATE_PERIOD_UNIT_HZ);
-    localparam UPDATE_PERIOD5 = CLOCK_HZ / (5 * SWEEP_UPDATE_PERIOD_UNIT_HZ);
-    localparam UPDATE_PERIOD6 = CLOCK_HZ / (6 * SWEEP_UPDATE_PERIOD_UNIT_HZ);
-    localparam UPDATE_PERIOD7 = CLOCK_HZ / (7 * SWEEP_UPDATE_PERIOD_UNIT_HZ);
+    localparam UPDATE_PERIOD1 = TCYCLE_CLOCK_HZ / (1 * SWEEP_UPDATE_PERIOD_UNIT_HZ);
+    localparam UPDATE_PERIOD2 = TCYCLE_CLOCK_HZ / (2 * SWEEP_UPDATE_PERIOD_UNIT_HZ);
+    localparam UPDATE_PERIOD3 = TCYCLE_CLOCK_HZ / (3 * SWEEP_UPDATE_PERIOD_UNIT_HZ);
+    localparam UPDATE_PERIOD4 = TCYCLE_CLOCK_HZ / (4 * SWEEP_UPDATE_PERIOD_UNIT_HZ);
+    localparam UPDATE_PERIOD5 = TCYCLE_CLOCK_HZ / (5 * SWEEP_UPDATE_PERIOD_UNIT_HZ);
+    localparam UPDATE_PERIOD6 = TCYCLE_CLOCK_HZ / (6 * SWEEP_UPDATE_PERIOD_UNIT_HZ);
+    localparam UPDATE_PERIOD7 = TCYCLE_CLOCK_HZ / (7 * SWEEP_UPDATE_PERIOD_UNIT_HZ);
 
     wire trigger; // トリガー信号
     wire [3:0] eg_volume; // 出力ボリューム
@@ -58,11 +58,10 @@ module pulse_generator #(
     reg [1:0] duty_ratio; // デューティ比
     reg [2:0] pulse_table_index; // 矩形波テーブルのインデックス
 
-    envelope_generator #(
-        .CLOCK_HZ(CLOCK_HZ)
-    ) eg (
+    envelope_generator eg (
         .i_clk(i_clk),
         .i_rst_n(i_rst_n),
+        .i_tcycle_tick(i_tcycle_tick),
         .i_we(i_we_volume_envelope),
         .i_volume_delta_direction(i_volume_delta_direction),
         .i_initial_volume(i_initial_volume),
@@ -71,11 +70,10 @@ module pulse_generator #(
         .o_volume(eg_volume)
     );
 
-    length_timer #(
-        .CLOCK_HZ(CLOCK_HZ)
-    ) timer (
+    length_timer timer (
         .i_clk(i_clk),
         .i_rst_n(i_rst_n),
+        .i_tcycle_tick(i_tcycle_tick),
         .i_we_enable(i_we_period_high_control),
         .i_enable(i_length_timer_enable),
         .i_we_length_timer(i_we_length_timer_duty_ratio),
@@ -154,7 +152,7 @@ module pulse_generator #(
             period <= {period[10:8], i_period_low};
         end else if (i_we_period_high_control) begin
             period <= {i_period_high, period[7:0]};
-        end else if (o_enable & period_update_enable) begin
+        end else if (o_enable & period_update_enable & i_tcycle_tick) begin
             if (period_update_count >= period_update_period) begin
                 period <= extend_period[10:0];
                 period_overflow <= extend_period[11];
@@ -185,7 +183,7 @@ module pulse_generator #(
         end else if (timer_expired | !o_dac_enable | period_overflow) begin
             // タイマー時間切れ・DAC無効・ピッチ周期オーバーフロー
             o_enable <= 0;
-        end else if (o_enable) begin
+        end else if (o_enable & i_tcycle_tick) begin
             // カウントアップ
             if (clk_count >= CLK_UPDATE_COUNT_PERIOD) begin
                 if (sample_update_count >= sample_update_period) begin

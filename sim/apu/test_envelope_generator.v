@@ -3,22 +3,23 @@
 
 module test_envelope_generator;
     parameter STEP = 10;
+    localparam CLK_UPDATE_PERIOD = 4194304 / 64;
 
     reg clk;
     reg rst_n;
     reg we;
     reg trigger;
     reg volume_delta_direction;
+    reg tcycle_tick;
     reg [3:0] initial_volume;
     reg [2:0] volume_sweep_pace;
     wire [3:0] volume;
     integer i;
 
-    envelope_generator #(
-        .CLOCK_HZ(64)
-    ) eg (
+    envelope_generator eg (
         .i_clk(clk),
         .i_rst_n(rst_n),
+        .i_tcycle_tick(tcycle_tick),
         .i_we(we),
         .i_volume_delta_direction(volume_delta_direction),
         .i_initial_volume(initial_volume),
@@ -65,7 +66,7 @@ module test_envelope_generator;
             trigger = 0;
 
             // 期待したクロックだけ待機
-            repeat (wait_duration) @(posedge clk);
+            repeat (CLK_UPDATE_PERIOD * wait_duration) @(posedge clk);
             // 信号値が確定するのを待つ
             @(negedge clk);
 
@@ -83,6 +84,7 @@ module test_envelope_generator;
         $dumpfile("build/test_envelope_generator.vcd");
         $dumpvars(0, test_envelope_generator);
 
+        tcycle_tick = 1;
         clk = 0;
 
         // 即時設定ケース
@@ -102,8 +104,8 @@ module test_envelope_generator;
         eg_test_case(4'hF, 0, 4, 16, 4'hB);
 
         // ボリューム端点のケース
-        eg_test_case(4'hF, 1, 1, 100, 4'hF);
-        eg_test_case(4'h0, 0, 1, 100, 4'h0);
+        eg_test_case(4'hF, 1, 1, 16, 4'hF);
+        eg_test_case(4'h0, 0, 1, 16, 4'h0);
 
         $finish;
     end

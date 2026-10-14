@@ -3,9 +3,11 @@
 
 module test_noise_generator;
     parameter STEP = 10;
+    localparam CLK_UPDATE_COUNT_PERIOD = 4194304 / 262144;
 
     reg clk;
     reg rst_n;
+    reg tcycle_tick;
     reg we_length_timer;
     reg we_volume_envelope;
     reg we_frequency_randomness;
@@ -25,11 +27,10 @@ module test_noise_generator;
     wire enable;
     wire dac_enable;
 
-    noise_generator #(
-        .CLOCK_HZ(262144)
-    ) ng (
+    noise_generator ng (
         .i_clk(clk),
         .i_rst_n(rst_n),
+        .i_tcycle_tick(tcycle_tick),
         .i_we_length_timer(we_length_timer),
         .i_initial_timer(initial_timer),
         .i_we_volume_envelope(we_volume_envelope),
@@ -244,7 +245,8 @@ module test_noise_generator;
             volume = 0;
             `EXPECT_EQ(ng.eg_volume, 4'h0);
             for (t = 0; t < period_count; t = t + 1) begin
-                #(period * STEP)
+                repeat (period * CLK_UPDATE_COUNT_PERIOD) @(posedge clk);
+                @(negedge clk);
                 `EXPECT_TRUE(volume <= ng.eg_volume);
                 volume = {28'd0, ng.eg_volume};
                 `EXPECT_TRUE((signal === 0) || (signal === ng.eg_volume));
@@ -262,7 +264,8 @@ module test_noise_generator;
             volume = 32'hF;
             `EXPECT_EQ(ng.eg_volume, 4'hF);
             for (t = 0; t < period_count; t = t + 1) begin
-                #(period * STEP)
+                repeat (period * CLK_UPDATE_COUNT_PERIOD) @(posedge clk);
+                @(negedge clk);
                 `EXPECT_TRUE(volume >= ng.eg_volume);
                 volume = {28'd0, ng.eg_volume};
                 `EXPECT_TRUE((signal === 0) || (signal === ng.eg_volume));
@@ -310,6 +313,7 @@ module test_noise_generator;
         $dumpfile("build/test_noise_generator.vcd");
         $dumpvars(0, test_noise_generator);
 
+        tcycle_tick = 1;
         clk = 0;
 
         ng_nontrigger_test();

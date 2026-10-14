@@ -3,9 +3,11 @@
 
 module test_sample_generator;
     parameter STEP = 10;
+    localparam CLK_UPDATE_COUNT_PERIOD = 4194304 / 2097152;
 
     reg clk;
     reg rst_n;
+    reg tcycle_tick;
     reg we_dac_enable;
     reg we_length_timer;
     reg we_output_level;
@@ -28,11 +30,10 @@ module test_sample_generator;
     wire dac_enable;
     wire [7:0] r_wave_2pcm;
 
-    sample_generator #(
-        .CLOCK_HZ(2097152)
-    ) sg (
+    sample_generator sg (
         .i_clk(clk),
         .i_rst_n(rst_n),
+        .i_tcycle_tick(tcycle_tick),
         .i_we_dac_enable(we_dac_enable),
         .i_dac_enable(in_dac_enable),
         .i_we_length_timer(we_length_timer),
@@ -276,9 +277,9 @@ module test_sample_generator;
             // 意図した出力になっているか？念のため2周
             for (i = 0; i < 64; i = i + 1) begin
                 // 次のクロックの値確定まで待機
-                @(posedge clk); @(negedge clk);
-                `EXPECT_EQ(sg.o_signal, (i[4:1] + 1) & 4'hF);
-                `EXPECT_EQ(signal, (i[4:1] + 1) & 4'hF);
+                repeat (CLK_UPDATE_COUNT_PERIOD) @(posedge clk);
+                @(negedge clk);
+                `EXPECT_EQ(signal, i[4:1] + 4'd1);
             end
         end
     endtask
@@ -305,15 +306,15 @@ module test_sample_generator;
 
                 // タイミング合わせ
                 // トリガー直後に信号が出ており、かつカウントが1進んでいるので一周期分消化
-                repeat (per - 1) @(posedge clk);
+                repeat (CLK_UPDATE_COUNT_PERIOD * (per - 1)) @(posedge clk);
                 for (i = 0; i < 32; i = i + 1) begin
+                    // インデックスがiの間、出力を保持するか？
                     for (j = 0; j < per; j = j + 1) begin
-                        @(posedge clk); @(negedge clk);
+                        repeat (CLK_UPDATE_COUNT_PERIOD) @(posedge clk);
+                        @(negedge clk);
                         if ((i % 2) == 0) begin
-                            `EXPECT_EQ(sg.o_signal, 0);
                             `EXPECT_EQ(signal, 0);
                         end else begin
-                            `EXPECT_EQ(sg.o_signal, 1);
                             `EXPECT_EQ(signal, 1);
                         end
                     end
@@ -326,6 +327,7 @@ module test_sample_generator;
         $dumpfile("build/test_sample_generator.vcd");
         $dumpvars(0, test_sample_generator);
 
+        tcycle_tick = 1;
         clk = 0;
 
         sg_constant_sample_test();

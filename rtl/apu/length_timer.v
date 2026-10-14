@@ -1,10 +1,9 @@
 `timescale 1ns/1ns
 
-module length_timer #(
-    parameter CLOCK_HZ = 1048576 // クロック動作周波数
-)(
+module length_timer (
     input wire i_clk, // クロック
     input wire i_rst_n, // 非同期リセット
+    input wire i_tcycle_tick, // T-Cycleクロックティック
     input wire i_we_enable, // 長さタイマー有効フラグ書き込み
     input wire i_enable, // 有効か
     input wire i_we_length_timer, // 長さタイマーパラメータ書き込み
@@ -14,8 +13,9 @@ module length_timer #(
     output reg o_expired // タイマー時間切れ
 );
 
+    localparam TCYCLE_CLOCK_HZ = 4194304; // T-Cycleのクロックティック信号
     localparam APU_LENGTH_TIMER_UPDATE_PERIOD_HZ = 256; // 持続時間タイマーの更新頻度
-    localparam CLK_UPDATE_COUNT_PERIOD_INT = CLOCK_HZ / APU_LENGTH_TIMER_UPDATE_PERIOD_HZ;
+    localparam CLK_UPDATE_COUNT_PERIOD_INT = TCYCLE_CLOCK_HZ / APU_LENGTH_TIMER_UPDATE_PERIOD_HZ;
     localparam [15:0] CLK_UPDATE_COUNT_PERIOD = CLK_UPDATE_COUNT_PERIOD_INT[15:0]; // クロックの更新周期
 
     reg enable; // タイマー有効か
@@ -58,7 +58,7 @@ module length_timer #(
             o_expired <= 0;
             clk_count <= 16'd1;
             timer_count <= {8'd0, initial_timer_count};
-        end else if (enable & !o_expired) begin
+        end else if (enable & !o_expired & i_tcycle_tick) begin
             // カウントアップ
             if (clk_count >= CLK_UPDATE_COUNT_PERIOD) begin
                 if (timer_count >= timeout) begin

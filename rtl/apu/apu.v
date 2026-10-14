@@ -2,11 +2,11 @@
 `include "sm83_register_address.vh"
 
 module apu #(
-    parameter CLOCK_HZ = 4194304, // クロック動作周波数
     parameter SIGNAL_BIT_WIDTH = 16 // 出力信号のビット深度
 )(
     input wire i_clk, // クロック
     input wire i_rst_n, // 非同期リセット
+    input wire i_tcycle_tick, // T-Cycleクロックティック
     input wire i_we_register, // レジスタ書き込みイネーブル
     input wire [15:0] i_address, // アドレス
     input wire [7:0] i_w_data, // 書き込みデータ
@@ -14,10 +14,6 @@ module apu #(
     output reg signed [SIGNAL_BIT_WIDTH-1:0] o_l_signal, // 左チャンネル信号
     output reg signed [SIGNAL_BIT_WIDTH-1:0] o_r_signal // 右チャンネル信号
 );
-
-    localparam AUDIO_OUTPUT_HZ = 4194304; // オーディオ出力周波数
-    localparam AUDIO_OUTPUT_PERIOD_INT = CLOCK_HZ / AUDIO_OUTPUT_HZ;
-    localparam [7:0] AUDIO_OUTPUT_PERIOD = AUDIO_OUTPUT_PERIOD_INT[7:0];
 
     localparam signed HPF_COEFFIENT_FIXED = $rtoi(0.999958 * (1 << (SIGNAL_BIT_WIDTH - 1)));
     localparam signed [SIGNAL_BIT_WIDTH-1:0] HPF_COEFFIENT = HPF_COEFFIENT_FIXED[SIGNAL_BIT_WIDTH-1:0]; // HPF係数
@@ -61,7 +57,6 @@ module apu #(
     wire signed [SIGNAL_BIT_WIDTH-1:0] out_l;
     wire signed [SIGNAL_BIT_WIDTH-1:0] out_r;
 
-    reg [7:0] audio_clk_count; // オーディオ出力用クロックカウント
     reg [SIGNAL_BIT_WIDTH-1:0] hpf_buffer_l;
     reg [SIGNAL_BIT_WIDTH-1:0] hpf_buffer_r;
 
@@ -88,11 +83,10 @@ module apu #(
     reg [7:0] nr51_sound_panning;
     reg [7:0] nr52_audio_master_control;
 
-    pulse_generator #(
-        .CLOCK_HZ(CLOCK_HZ)
-    ) pg1 (
+    pulse_generator pg1 (
         .i_clk(i_clk),
         .i_rst_n(i_rst_n),
+        .i_tcycle_tick(i_tcycle_tick),
         .i_we_period_sweep(nr10_write),
         .i_period_sweep_pace(i_w_data[6:4]),
         .i_period_sweep_direction(i_w_data[3]),
@@ -115,11 +109,10 @@ module apu #(
         .o_signal(ch_signal[0])
     );
 
-    pulse_generator #(
-        .CLOCK_HZ(CLOCK_HZ)
-    ) pg2 (
+    pulse_generator pg2 (
         .i_clk(i_clk),
         .i_rst_n(i_rst_n),
+        .i_tcycle_tick(i_tcycle_tick),
         // スイープに関するポートは0にして無効化
         .i_we_period_sweep(1'b0),
         .i_period_sweep_pace(3'h0),
@@ -143,11 +136,10 @@ module apu #(
         .o_signal(ch_signal[1])
     );
 
-    sample_generator #(
-        .CLOCK_HZ(CLOCK_HZ)
-    ) sg (
+    sample_generator sg (
         .i_clk(i_clk),
         .i_rst_n(i_rst_n),
+        .i_tcycle_tick(i_tcycle_tick),
         .i_we_dac_enable(nr30_write),
         .i_dac_enable(i_w_data[7]),
         .i_we_length_timer(nr31_write),
@@ -169,11 +161,10 @@ module apu #(
         .o_signal(ch_signal[2])
     );
 
-    noise_generator #(
-        .CLOCK_HZ(CLOCK_HZ)
-    ) ng (
+    noise_generator ng (
         .i_clk(i_clk),
         .i_rst_n(i_rst_n),
+        .i_tcycle_tick(i_tcycle_tick),
         .i_we_length_timer(nr41_write),
         .i_initial_timer(i_w_data[5:0]),
         .i_we_volume_envelope(nr42_write),
@@ -369,24 +360,17 @@ module apu #(
     // HPF適用・オーディオ出力
     assign out_l = ex_l_signal - hpf_buffer_l;
     assign out_r = ex_r_signal - hpf_buffer_r;
-    always @(posedge i_clk or negedge i_rst_n)
-    begin
+    always @(posedge i_clk or negedge i_rst_n) begin
         if (!i_rst_n) begin
             o_l_signal <= 0;
             o_r_signal <= 0;
             hpf_buffer_l <= 0;
             hpf_buffer_r <= 0;
-            audio_clk_count <= 8'd1;
-        end else begin
-            if (audio_clk_count >= AUDIO_OUTPUT_PERIOD) begin
-                o_l_signal <= out_l;
-                o_r_signal <= out_r;
-                hpf_buffer_l <= update_hpf_buffer(ex_l_signal, out_l);
-                hpf_buffer_r <= update_hpf_buffer(ex_r_signal, out_r);
-                audio_clk_count <= 8'd1;
-            end else begin
-                audio_clk_count <= audio_clk_count + 8'd1;
-            end
+        end else if (i_tcycle_tick) begin
+            o_l_signal <= out_l;
+            o_r_signal <= out_r;
+            hpf_buffer_l <= update_hpf_buffer(ex_l_signal, out_l);
+            hpf_buffer_r <= update_hpf_buffer(ex_r_signal, out_r);
         end
     end
 

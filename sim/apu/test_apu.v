@@ -9,6 +9,7 @@ module test_apu;
     reg clk;
     reg rst_n;
     reg we_register;
+    reg tcycle_tick;
     reg [15:0] address;
     reg [7:0] w_data;
     wire [7:0] r_data;
@@ -20,6 +21,7 @@ module test_apu;
         .SIGNAL_BIT_WIDTH(SIGNAL_BIT_WIDTH)
     ) apu (
         .i_clk(clk),
+        .i_tcycle_tick(tcycle_tick),
         .i_rst_n(rst_n),
         .i_we_register(we_register),
         .i_address(address),
@@ -200,6 +202,7 @@ module test_apu;
         $dumpfile("build/test_apu.vcd");
         $dumpvars(0, test_apu);
 
+        tcycle_tick = 1;
         clk = 0;
 
         apu_reset();

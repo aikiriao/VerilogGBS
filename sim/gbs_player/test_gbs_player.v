@@ -3,7 +3,7 @@
 `timescale 1ns/1ns
 
 module test_gbs_player;
-    parameter STEP = 10;
+    parameter STEP = 2;
     localparam SIGNAL_BIT_WIDTH = 16;
     localparam CLOCK_HZ = 4194304;
     localparam AUDIO_HZ = 48000;
@@ -28,10 +28,8 @@ module test_gbs_player;
             if (clk_count >= AUDIO_OUTPUT_PERIOD) begin
                 if (fd != 0) begin
                     $fwrite(fd, "%c%c%c%c",
-                        l_signal[7:0],
-                        l_signal[15:8],
-                        r_signal[7:0],
-                        r_signal[15:8]);
+                        l_signal[7:0], l_signal[15:8],
+                        r_signal[7:0], r_signal[15:8]);
                 end
                 clk_count <= 1;
             end else begin
@@ -41,6 +39,7 @@ module test_gbs_player;
     end
 
     gbs_player #(
+        .ROM_FILE("testdata/sm83/pkred_rom.hex"),
         .CLOCK_HZ(CLOCK_HZ),
         .SIGNAL_BIT_WIDTH(SIGNAL_BIT_WIDTH)
     ) player (

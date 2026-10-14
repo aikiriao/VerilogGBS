@@ -1,10 +1,9 @@
 `timescale 1ns/1ns
 
-module envelope_generator #(
-    parameter CLOCK_HZ = 1048576 // クロック動作周波数
-)(
+module envelope_generator (
     input wire i_clk, // クロック
     input wire i_rst_n, // 非同期リセット
+    input wire i_tcycle_tick, // T-Cycleクロックティック
     input wire i_we, // パラメータ書き込み
     input wire [3:0] i_initial_volume, // 初期ボリューム
     input wire i_volume_delta_direction, // ボリューム更新方向（0: -1、1: 1）
@@ -13,8 +12,9 @@ module envelope_generator #(
     output reg [3:0] o_volume // ボリューム
 );
 
+    localparam TCYCLE_CLOCK_HZ = 4194304; // T-Cycleのクロックティック信号
     localparam APU_ENVELOPE_SWEEP_HZ = 64; // エンベロープジェネレータの更新頻度
-    localparam CLK_UPDATE_COUNT_PERIOD_INT = CLOCK_HZ / APU_ENVELOPE_SWEEP_HZ;
+    localparam CLK_UPDATE_COUNT_PERIOD_INT = TCYCLE_CLOCK_HZ / APU_ENVELOPE_SWEEP_HZ;
     localparam [23:0] CLK_UPDATE_COUNT_PERIOD = CLK_UPDATE_COUNT_PERIOD_INT[23:0]; // クロックの更新周期
 
     reg volume_delta_direction; // ボリューム更新方向
@@ -49,7 +49,7 @@ module envelope_generator #(
             o_volume <= initial_volume;
             clk_count <= 24'd1;
             timer_count <= 3'd1;
-        end else if (volume_sweep_pace != 0) begin
+        end else if ((volume_sweep_pace != 0) & i_tcycle_tick) begin
             // カウントアップ
             if (clk_count >= CLK_UPDATE_COUNT_PERIOD) begin
                 if (timer_count >= volume_sweep_pace) begin
