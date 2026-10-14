@@ -93,9 +93,13 @@ if __name__ == "__main__":
             rom[0x0E] = (init_address >> 0) & 0xFF
             rom[0x0F] = (init_address >> 8) & 0xFF
             # 割り込み有効
-            # LD A, 0x1F
+            # 使用するタイマーのみ割り込みを有効に設定
+            # LD A, 0x01（VBlank） or LD A, 0x04（タイマー）
             rom[0x10] = 0x3E
-            rom[0x11] = 0x1F
+            if ((timer_control & 0x04) == 0):
+                rom[0x11] = 0x01
+            else:
+                rom[0x11] = 0x04
             # LDH [0xFF], A
             rom[0x12] = 0xE0
             rom[0x13] = 0xFF
@@ -106,21 +110,22 @@ if __name__ == "__main__":
             rom[0x15] = 0x18
             rom[0x16] = 0xFE
 
-            # 0x40に割込みルーチンを仕込む
-            # CALL play_address
-            rom[0x40] = 0xCD
-            rom[0x41] = (play_address >> 0) & 0xFF
-            rom[0x42] = (play_address >> 8) & 0xFF
-            # RETI
-            rom[0x43] = 0xD9
-
-            # 0x50に割り込みルーチンを仕込む
-            # CALL play_address
-            rom[0x50] = 0xCD
-            rom[0x51] = (play_address >> 0) & 0xFF
-            rom[0x52] = (play_address >> 8) & 0xFF
-            # RETI
-            rom[0x53] = 0xD9
+            if ((timer_control & 0x04) == 0):
+                # 0x40にVBlank割込みルーチンを仕込む
+                # CALL play_address
+                rom[0x40] = 0xCD
+                rom[0x41] = (play_address >> 0) & 0xFF
+                rom[0x42] = (play_address >> 8) & 0xFF
+                # RETI
+                rom[0x43] = 0xD9
+            else:
+                # 0x50にタイマー割り込みルーチンを仕込む
+                # CALL play_address
+                rom[0x50] = 0xCD
+                rom[0x51] = (play_address >> 0) & 0xFF
+                rom[0x52] = (play_address >> 8) & 0xFF
+                # RETI
+                rom[0x53] = 0xD9
 
             # ROMイメージ書き出し
             i = 0;
