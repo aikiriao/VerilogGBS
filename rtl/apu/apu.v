@@ -15,8 +15,8 @@ module apu #(
     output reg signed [SIGNAL_BIT_WIDTH-1:0] o_r_signal // 右チャンネル信号
 );
 
-    localparam signed HPF_COEFFIENT_FIXED = $rtoi(0.999958 * (1 << (SIGNAL_BIT_WIDTH - 1)));
-    localparam signed [SIGNAL_BIT_WIDTH-1:0] HPF_COEFFIENT = HPF_COEFFIENT_FIXED[SIGNAL_BIT_WIDTH-1:0]; // HPF係数
+    localparam signed HPF_COEFFICIENT_FIXED = $rtoi(0.999958 * (1 << (SIGNAL_BIT_WIDTH - 1)) + 0.5);
+    localparam signed [SIGNAL_BIT_WIDTH-1:0] HPF_COEFFICIENT = HPF_COEFFICIENT_FIXED[SIGNAL_BIT_WIDTH-1:0]; // HPF係数
 
     // 各レジスタの書き込み信号
     wire nr10_write = i_we_register & (i_address == `HWREG_NR10_CHANNEL1_SWEEP);
@@ -57,8 +57,8 @@ module apu #(
     wire signed [SIGNAL_BIT_WIDTH-1:0] out_l;
     wire signed [SIGNAL_BIT_WIDTH-1:0] out_r;
 
-    reg [SIGNAL_BIT_WIDTH-1:0] hpf_buffer_l;
-    reg [SIGNAL_BIT_WIDTH-1:0] hpf_buffer_r;
+    reg signed [SIGNAL_BIT_WIDTH-1:0] hpf_buffer_l;
+    reg signed [SIGNAL_BIT_WIDTH-1:0] hpf_buffer_r;
 
     // APUレジスタ
     reg [7:0] nr10_ch1_sweep;
@@ -289,13 +289,12 @@ module apu #(
         end
     end
 
-    // DAC（4bit符号なし -> 符号反転した8bit符号付き -15, ..., -1, 0, 1, ..., 15 にマップされる）
-    // TODO: 音圧が小さいのでここで調整が必要
+    // DAC（4bit符号なし -> 符号反転した8bit符号付き -30, -26, ..., -2, 0, 2, ..., 26, 30 にマップされる）
     function automatic signed [7:0] dac;
         input dac_enable;
         input [3:0] in;
 
-        dac = dac_enable ? (8'd15 - $signed({4'b0000, in}) <<< 1) : 0;
+        dac = dac_enable ? (8'sd30 - ($signed({4'b0000, in}) <<< 2)) : 0;
     endfunction
 
     // DACに通す
@@ -351,7 +350,7 @@ module apu #(
         /* verilator lint_on UNUSEDSIGNAL */
 
         begin
-            mul = out * HPF_COEFFIENT;
+            mul = out * HPF_COEFFICIENT;
             mul = mul >>> (SIGNAL_BIT_WIDTH - 1);
             update_hpf_buffer = in - $signed(mul[SIGNAL_BIT_WIDTH-1:0]);
         end
