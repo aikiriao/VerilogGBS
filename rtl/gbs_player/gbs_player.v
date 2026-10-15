@@ -14,7 +14,7 @@ module gbs_player #(
 );
 
     localparam [24:0] TCYCLE_CLOCK_HZ = 4194304; // T-cycle周波数(Hz)
-    localparam [24:0] WRAP_CLOCK_HZ = CLOCK_HZ - TCYCLE_CLOCK_HZ; // クロック更新後の周波数
+    localparam [24:0] WRAP_CLK_COUNT = CLOCK_HZ - TCYCLE_CLOCK_HZ; // クロックカウントが回り込んだ時の更新値
 
     reg [24:0] tcycle_clk_count;
     reg tcycle_tick; // T-Cycleのクロックティック
@@ -62,7 +62,7 @@ module gbs_player #(
             tcycle_tick <= 0;
             if ((tcycle_clk_count + TCYCLE_CLOCK_HZ) >= CLOCK_HZ) begin
                 tcycle_tick <= 1;
-                tcycle_clk_count <= tcycle_clk_count - WRAP_CLOCK_HZ;
+                tcycle_clk_count <= tcycle_clk_count - WRAP_CLK_COUNT;
             end else begin
                 tcycle_clk_count <= tcycle_clk_count + TCYCLE_CLOCK_HZ;
             end
