@@ -161,4 +161,10 @@
 // MBC1 mode register
 `define MODE_START_ADDRESS 16'h6000
 
+// 独自追加アドレス
+// GBSファイル曲数
+`define HWREG_GBS_NUMBER_OF_SONGS 16'hFF27
+// 現在再生中の楽曲番号
+`define HWREG_GBS_CURRENT_SONG_NUMBER 16'hFF28
+
 `endif //  SM83_REGISTER_ADDRESS_VH
