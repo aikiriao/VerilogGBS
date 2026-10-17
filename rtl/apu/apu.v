@@ -305,15 +305,15 @@ module apu #(
 
     // ミックス・パンニング
     assign mixed_l_signal =
-        (nr51_sound_panning[0] ? dac_signal[0] : 8'd0)
-        + (nr51_sound_panning[1] ? dac_signal[1] : 8'd0)
-        + (nr51_sound_panning[2] ? dac_signal[2] : 8'd0)
-        + (nr51_sound_panning[3] ? dac_signal[3] : 8'd0);
-    assign mixed_r_signal =
         (nr51_sound_panning[4] ? dac_signal[0] : 8'd0)
         + (nr51_sound_panning[5] ? dac_signal[1] : 8'd0)
         + (nr51_sound_panning[6] ? dac_signal[2] : 8'd0)
         + (nr51_sound_panning[7] ? dac_signal[3] : 8'd0);
+    assign mixed_r_signal =
+        (nr51_sound_panning[0] ? dac_signal[0] : 8'd0)
+        + (nr51_sound_panning[1] ? dac_signal[1] : 8'd0)
+        + (nr51_sound_panning[2] ? dac_signal[2] : 8'd0)
+        + (nr51_sound_panning[3] ? dac_signal[3] : 8'd0);
 
     // マスターボリューム
     function automatic signed [7:0] apply_master_volume;
