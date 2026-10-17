@@ -17,6 +17,7 @@ module apu #(
 
     localparam signed HPF_COEFFICIENT_FIXED = $rtoi(0.999958 * (1 << (SIGNAL_BIT_WIDTH - 1)) + 0.5);
     localparam signed [SIGNAL_BIT_WIDTH-1:0] HPF_COEFFICIENT = HPF_COEFFICIENT_FIXED[SIGNAL_BIT_WIDTH-1:0]; // HPF係数
+    localparam SCALE_RIGHT_SHIFT = 2; // 出力の右シフト フルスケールで出力すると機材が壊れる可能性があるため
 
     // 各レジスタの書き込み信号
     wire nr10_write = i_we_register & (i_address == `HWREG_NR10_CHANNEL1_SWEEP);
@@ -289,12 +290,12 @@ module apu #(
         end
     end
 
-    // DAC（4bit符号なし -> 符号反転した8bit符号付き -30, -26, ..., -2, 0, 2, ..., 26, 30 にマップされる）
+    // DAC（4bit符号なし -> 符号反転した8bit符号付き -15, -13, ..., -1, 0, 1, ..., 13, 15 にマップされる）
     function automatic signed [7:0] dac;
         input dac_enable;
         input [3:0] in;
 
-        dac = dac_enable ? (8'sd30 - ($signed({4'b0000, in}) <<< 2)) : 8'sd0;
+        dac = dac_enable ? (8'sd15 - ($signed({4'b0000, in}) <<< 1)) : 8'sd0;
     endfunction
 
     // DACに通す
@@ -327,7 +328,7 @@ module apu #(
             // in * (volume + 1) / 8
             gain = $signed({1'b0, volume}) + 4'sd1;
             scaled = in * gain;
-            scaled = scaled >>> 3;
+            scaled = scaled >>> (3 + SCALE_RIGHT_SHIFT);
 
             apply_master_volume = scaled[7:0];
         end
