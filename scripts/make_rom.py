@@ -91,9 +91,9 @@ if __name__ == "__main__":
             rom[0x0D] = 0xE0
             rom[0x0E] = 0x27
             # 楽曲番号の設定
-            # LD A, first_song
+            # LD A, first_song - 1 （1オリジンから0オリジンに直す）
             rom[0x0F] = 0x3E
-            rom[0x10] = first_song
+            rom[0x10] = first_song - 1
             # LDH [0x28], A
             rom[0x11] = 0xE0
             rom[0x12] = 0x28
