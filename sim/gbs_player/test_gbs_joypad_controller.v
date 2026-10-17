@@ -122,11 +122,11 @@ module test_gbs_joypad_controller;
 
             gbs_joypad_controller_write_command(JOYPAD_COMMAND_NEXT_SONG);
             gbs_joypad_controller_read_register(`HWREG_GBS_CURRENT_SONG_NUMBER, r_reg);
-            `EXPECT_EQ(r_reg, 8'd1);
+            `EXPECT_EQ(r_reg, 8'd0);
 
             gbs_joypad_controller_write_command(JOYPAD_COMMAND_PREV_SONG);
             gbs_joypad_controller_read_register(`HWREG_GBS_CURRENT_SONG_NUMBER, r_reg);
-            `EXPECT_EQ(r_reg, 8'd0);
+            `EXPECT_EQ(r_reg, 8'd1);
 
             gbs_joypad_controller_write_command(JOYPAD_COMMAND_PREV_SONG);
             gbs_joypad_controller_read_register(`HWREG_GBS_CURRENT_SONG_NUMBER, r_reg);
