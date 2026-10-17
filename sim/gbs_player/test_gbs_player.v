@@ -44,6 +44,8 @@ module test_gbs_player;
     ) player (
         .i_clk(clk),
         .i_rst_n(rst_n),
+        .i_we_command(1'b0),
+        .i_command(8'd0),
         .o_l_signal(l_signal),
         .o_r_signal(r_signal)
     );

@@ -8,5 +8,6 @@
 ./rtl/apu/noise_generator.v
 ./rtl/apu/apu.v
 ./rtl/gbs_player/gbs_memory.v
+./rtl/gbs_player/gbs_joypad_controller.v
 ./rtl/gbs_player/gbs_player.v
 ./sim/gbs_player/test_gbs_player.v

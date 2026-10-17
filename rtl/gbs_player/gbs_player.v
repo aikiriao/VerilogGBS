@@ -9,6 +9,8 @@ module gbs_player #(
 )(
     input wire i_clk, // クロック
     input wire i_rst_n, // 非同期リセット
+    input wire i_we_command, // コマンド入力イネーブル
+    input wire [7:0] i_command, // コマンド入力
     output wire signed [SIGNAL_BIT_WIDTH-1:0] o_l_signal, // 左チャンネル信号
     output wire signed [SIGNAL_BIT_WIDTH-1:0] o_r_signal // 右チャンネル信号
 );
@@ -29,28 +31,38 @@ module gbs_player #(
     wire cpu_we;
     wire cpu_re;
     wire cpu_we_pulse = cpu_we & mcycle_tick;
+
+    wire [7:0] apu_r_data;
     wire apu_address = ((address >= `HWREG_NR10_CHANNEL1_SWEEP) && (address <= `HWREG_NR34_CHANNEL3_PERIOD_HIGH_CONTROL))
                     || ((address >= `HWREG_NR41_CHANNEL4_LENGTH_TIMER) && (address <= `HWREG_NR52_AUDIO_MASTER_CONTROL))
                     || ((address >= `HWREG_CHANNEL3_WAVE_PATTERN_RAM_START) && (address <= `HWREG_CHANNEL3_WAVE_PATTERN_RAM_END));
     wire apu_we = cpu_we_pulse & apu_address;
-    wire [7:0] apu_r_data;
+
+    wire [7:0] timer_r_data;
     wire timer_address = (address >= `HWREG_DIV_REGISTER) && (address <= `HWREG_TAC_TIMER_CONTROL);
     wire timer_we = cpu_we_pulse & timer_address;
-    wire [7:0] timer_r_data;
     wire timer_irq;
     wire vblank_irq;
+
+    wire [7:0] irq_r_data;
     wire irq_address = (address == `HWREG_IF_INTERRUPT_FLAG) || (address == `HWREG_IE_INTERRUPT_ENABLE);
     wire irq_we = cpu_we_pulse & irq_address;
-    wire [7:0] irq_r_data;
+
     wire [7:0] memory_r_data;
     wire memory_address = (address < `HWREG_START_ADDRESS) || ((address >= `HRAM_START_ADDRESS) && (address < `HWREG_IE_INTERRUPT_ENABLE));
     wire memory_we = cpu_we_pulse & memory_address;
+
+    wire [7:0] joypad_r_data;
+    wire joypad_address = (address >= `HWREG_GBS_NUMBER_OF_SONGS) && (address <= `HWREG_GBS_CURRENT_SONG_NUMBER);
+    wire joypad_we = cpu_we_pulse & joypad_address;
+    wire joypad_irq;
 
     // CPUへの入力データをアドレスに依存して決定
     assign cpu_r_data = (apu_address) ? apu_r_data
                         : (timer_address) ? timer_r_data
                         : (irq_address) ? irq_r_data
                         : (memory_address) ? memory_r_data
+                        : (joypad_address) ? joypad_r_data
                         : 8'd0;
 
     // T-Cycleのクロックティックパルス生成
@@ -136,7 +148,7 @@ module gbs_player #(
         .i_lcd_irq(1'b0), // 未使用
         .i_timer_irq(timer_irq),
         .i_serial_irq(1'b0), // 未使用
-        .i_joypad_irq(1'b0), // 未使用
+        .i_joypad_irq(joypad_irq),
         .i_irq_ack(cpu_irq_ack),
         .o_r_data(irq_r_data),
         .o_irq_pending(cpu_irq_pending)
@@ -154,6 +166,19 @@ module gbs_player #(
         .i_re(cpu_re),
         .i_we(memory_we),
         .o_r_data(memory_r_data)
+    );
+
+    // ジョイパッド
+    gbs_joypad_controller joypad_controller (
+        .i_clk(i_clk),
+        .i_rst_n(i_rst_n),
+        .i_we_register(joypad_we),
+        .i_address(address),
+        .i_w_data(cpu_w_data),
+        .i_we_command(i_we_command),
+        .i_command(i_command),
+        .o_r_data(joypad_r_data),
+        .o_joypad_irq(joypad_irq)
     );
 
 endmodule
