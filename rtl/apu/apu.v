@@ -334,8 +334,8 @@ module apu #(
     endfunction
 
     // マスターボリューム適用
-    assign l_signal = apply_master_volume(nr52_audio_master_control[6:4], mixed_l_signal);
-    assign r_signal = apply_master_volume(nr52_audio_master_control[2:0], mixed_r_signal);
+    assign l_signal = apply_master_volume(nr50_master_volume_vin_panning[6:4], mixed_l_signal);
+    assign r_signal = apply_master_volume(nr50_master_volume_vin_panning[2:0], mixed_r_signal);
 
     // ビット幅拡張
     assign ex_l_signal = {l_signal, {(SIGNAL_BIT_WIDTH - 8){1'b0}}};
