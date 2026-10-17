@@ -51,12 +51,12 @@ if __name__ == "__main__":
             fout.write(f'// Copyright: {copyright}\n')
             fout.write(f'// Number of Songs: {num_songs}\n')
             fout.write(f'// First Song: {first_song}\n')
-            fout.write(f'// Load Address: {load_address:4X}\n')
-            fout.write(f'// Init Address: {init_address:4X}\n')
-            fout.write(f'// Play Address: {play_address:4X}\n')
-            fout.write(f'// Stack Pointer: {stack_pointer:4X}\n')
-            fout.write(f'// Timer Modulo: {timer_modulo:2X}\n')
-            fout.write(f'// Timer Control: {timer_control:2X}\n')
+            fout.write(f'// Load Address: 0x{load_address:04X}\n')
+            fout.write(f'// Init Address: 0x{init_address:04X}\n')
+            fout.write(f'// Play Address: 0x{play_address:04X}\n')
+            fout.write(f'// Stack Pointer: 0x{stack_pointer:04X}\n')
+            fout.write(f'// Timer Modulo: 0x{timer_modulo:02X}\n')
+            fout.write(f'// Timer Control: 0x{timer_control:02X}\n')
 
             # EDAによっては@<address>形式のロードをサポートしていないので、先頭アドレスからのROMイメージを生成
             rom_size = len(data) - 0x70 + load_address
@@ -83,33 +83,46 @@ if __name__ == "__main__":
             # LDH [0x07], A
             rom[0x09] = 0xE0
             rom[0x0A] = 0x07
-            # 再生楽曲番号をAに設定
-            # LD A, first_song
+            # 楽曲数を設定
+            # LD A, num_songs
             rom[0x0B] = 0x3E
-            rom[0x0C] = first_song
+            rom[0x0C] = num_songs
+            # LDH [0x27], A
+            rom[0x0D] = 0xE0
+            rom[0x0E] = 0x27
+            # 楽曲番号の設定
+            # LD A, first_song
+            rom[0x0F] = 0x3E
+            rom[0x10] = first_song
+            # LDH [0x28], A
+            rom[0x11] = 0xE0
+            rom[0x12] = 0x28
             # Initルーチン呼び出し
             # CALL init_address
-            rom[0x0D] = 0xCD
-            rom[0x0E] = (init_address >> 0) & 0xFF
-            rom[0x0F] = (init_address >> 8) & 0xFF
+            rom[0x13] = 0xCD
+            rom[0x14] = (init_address >> 0) & 0xFF
+            rom[0x15] = (init_address >> 8) & 0xFF
             # 割り込み有効
             # 使用するタイマーのみ割り込みを有効に設定
-            # LD A, 0x01（VBlank） or LD A, 0x04（タイマー）
-            rom[0x10] = 0x3E
+            # LD A, 0x11（VBlank） or LD A, 0x14（タイマー）
+            rom[0x16] = 0x3E
             if ((timer_control & 0x04) == 0):
-                rom[0x11] = 0x01
+                rom[0x17] = 0x01
             else:
-                rom[0x11] = 0x04
+                rom[0x17] = 0x04
+            # Joypad割り込みを有効化
+            rom[0x17] |= 0x10
             # LDH [0xFF], A
-            rom[0x12] = 0xE0
-            rom[0x13] = 0xFF
+            rom[0x18] = 0xE0
+            rom[0x19] = 0xFF
             # EI
-            rom[0x14] = 0xFB
+            rom[0x1A] = 0xFB
             # 無限ループ（割り込み待ち）
             # JR -2
-            rom[0x15] = 0x18
-            rom[0x16] = 0xFE
+            rom[0x1B] = 0x18
+            rom[0x1C] = 0xFE
 
+            # playルーチンを割り込みハンドラに仕込む
             if ((timer_control & 0x04) == 0):
                 # 0x40にVBlank割込みルーチンを仕込む
                 # CALL play_address
@@ -126,6 +139,58 @@ if __name__ == "__main__":
                 rom[0x52] = (play_address >> 8) & 0xFF
                 # RETI
                 rom[0x53] = 0xD9
+
+            # Joypad処理を割り込みハンドラに仕込む
+            # RAM(0xA000 - 0xDFFF)をクリア
+            # LD HL, 0xA000
+            rom[0x60] = 0x21
+            rom[0x61] = 0x00
+            rom[0x62] = 0xA0
+            # LD BC, 0x4000
+            rom[0x63] = 0x01
+            rom[0x64] = 0x00
+            rom[0x65] = 0x40
+            # loop:
+            #   XOR A (A <- 0)
+            rom[0x66] = 0xAF
+            #   LD [HL+], A
+            rom[0x67] = 0x22
+            #   DEC BC
+            rom[0x68] = 0x0B
+            #   LD A, B
+            rom[0x69] = 0x78
+            #   OR A, C
+            rom[0x6A] = 0xB1
+            #   JP NZ, loop
+            rom[0x6B] = 0xC2
+            rom[0x6C] = 0x66
+            rom[0x6D] = 0x00
+            # レジスタをクリア
+            # LD B, A
+            rom[0x6E] = 0x47
+            # LD C, A
+            rom[0x6F] = 0x4F
+            # LD D, A
+            rom[0x70] = 0x57
+            # LD E, A
+            rom[0x71] = 0x5F
+            # LD H, A
+            rom[0x72] = 0x67
+            # LD L, A
+            rom[0x73] = 0x6F
+            # LD SP, stack_pointer
+            rom[0x74] = 0x31
+            rom[0x75] = (stack_pointer >> 0) & 0xFF
+            rom[0x76] = (stack_pointer >> 8) & 0xFF
+            # 再生番号の設定
+            # LDH A, [0x28]
+            rom[0x77] = 0xF0
+            rom[0x78] = 0x28
+            # init呼び出しに戻る
+            # JP 0x0013
+            rom[0x79] = 0xC3
+            rom[0x7A] = 0x13
+            rom[0x7B] = 0x00
 
             # ROMイメージ書き出し
             i = 0;
