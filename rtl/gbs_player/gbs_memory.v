@@ -27,7 +27,7 @@ module gbs_memory #(
     wire bank1_low_write = i_we & (i_address >= `BANK1_START_ADDRESS) & (i_address < `BANK2_START_ADDRESS);
     wire bank1_high_write = i_we & (i_address >= `BANK2_START_ADDRESS) & (i_address < `MODE_START_ADDRESS);
     wire ext_ram_write = i_we & (ramg == 4'hA) & (i_address >= `EXTERNAL_RAM_START_ADDRESS) & (i_address < `WRAM_BANK0_START_ADDRESS);
-    wire ram_write = i_we & (i_address >= `WRAM_BANK0_START_ADDRESS) & (i_address < `ECHO_RAM_START_ADDRESS);
+    wire ram_write = i_we && (((i_address >= `WRAM_BANK0_START_ADDRESS) && (i_address < `ECHO_RAM_START_ADDRESS)) || ((address >= `HRAM_START_ADDRESS) && (address < `HWREG_IE_INTERRUPT_ENABLE)));
 
     // RAM/ROMアドレス
     wire [14:0] ram_address = i_address[14:0] - ROM_END_ADDRESS[14:0];
