@@ -31,7 +31,7 @@ test_%: $(BUILD_DIR)
 		--lint-only -Wall --default-language 1364-2001 -Wno-MULTITOP -Wno-UNUSEDPARAM --no-sched-zero-delay --report-unoptflat \
 		-Irtl/include \
 		-Isim/include \
-	   	-f $(FILELIST_DIR)/test_$*.f || :
+	   	-f $(FILELIST_DIR)/test_$*.f
 	$(IVERILOG) \
 		-g2001 -Wall -Wno-sensitivity-entire-array \
 		-s test_$* \
