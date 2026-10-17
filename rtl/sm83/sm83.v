@@ -316,7 +316,7 @@ module sm83 (
                     R16STK_BC: {b, c} <= r16_w_data;
                     R16STK_DE: {d, e} <= r16_w_data;
                     R16STK_HL: {h, l} <= r16_w_data;
-                    R16STK_AF: {a, flags} <= r16_w_data;
+                    R16STK_AF: {a, flags} <= {r16_w_data[15:4], 4'b0000}; // 下位4bitは0
                 endcase
             end
         end
