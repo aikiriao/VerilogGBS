@@ -1,7 +1,8 @@
 module top (
     input wire i_clk, // クロック
-    input wire i_rst, // S2ボタン
-    // TODO: S1ボタンに曲切り替えを割り当てる
+    input wire i_rst, // 非同期リセット
+    input wire i_next_button, // 楽曲変更ボタン
+    input wire i_prev_button, // 楽曲変更ボタン
 
     // オーディオインターフェース
     output wire o_i2s_bck, // 1.536 MHzクロックと同じ
@@ -12,12 +13,17 @@ module top (
 
     localparam BITS_PER_SAMPLE = 16;
 
+    `include "gbs_player_joypad_command.vh"
+
     wire clk_6m; // 1.5 MHzクロック生成用の6 MHzクロック
     wire clk_1p5m; // 約1.536 MHzのクロック
     wire data_req; // データ読み出し要求
     wire rst_n = ~i_rst;
     wire signed [BITS_PER_SAMPLE-1:0] l_signal;
     wire signed [BITS_PER_SAMPLE-1:0] r_signal;
+
+    reg we_command;
+    reg [7:0] command;
 
     assign o_i2s_en = 1'b1; // オーディオアンプは常時有効
 
@@ -48,14 +54,33 @@ module top (
 
     // GBSプレイヤー
     gbs_player #(
-        .ROM_FILE("testdata/sm83/pkred_rom.hex"),
+        .ROM_FILE("testdata/gbs_player/pkred_rom.hex"),
         .CLOCK_HZ(27_000_000),
         .SIGNAL_BIT_WIDTH(BITS_PER_SAMPLE)
     ) player (
         .i_clk(i_clk), // クロック
         .i_rst_n(rst_n), // 非同期リセット信号
+        .i_we_command(we_command),
+        .i_command(command),
         .o_l_signal(l_signal),
         .o_r_signal(r_signal)
     );
+
+    always @(posedge i_clk or negedge rst_n)
+    begin
+        if (!rst_n) begin
+            we_command <= 0;
+            command <= 8'd0;
+        end else if (i_next_button) begin
+            we_command <= 1;
+            command <= JOYPAD_COMMAND_NEXT_SONG;
+        end else if (i_prev_button) begin
+            we_command <= 1;
+            command <= JOYPAD_COMMAND_PREV_SONG;
+        end else begin
+            we_command <= 0;
+            command <= 8'd0;
+        end
+    end
 
 endmodule

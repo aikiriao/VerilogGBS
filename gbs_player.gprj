@@ -11,6 +11,7 @@
         <File path="rtl/apu/noise_generator.v" type="file.verilog" enable="1"/>
         <File path="rtl/apu/pulse_generator.v" type="file.verilog" enable="1"/>
         <File path="rtl/apu/sample_generator.v" type="file.verilog" enable="1"/>
+        <File path="rtl/gbs_player/gbs_joypad_controller.v" type="file.verilog" enable="1"/>
         <File path="rtl/gbs_player/gbs_memory.v" type="file.verilog" enable="1"/>
         <File path="rtl/gbs_player/gbs_player.v" type="file.verilog" enable="1"/>
         <File path="rtl/i2s_transmitter/i2s_transmitter.v" type="file.verilog" enable="1"/>
