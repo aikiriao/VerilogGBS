@@ -2,7 +2,6 @@ module top (
     input wire i_clk, // クロック
     input wire i_rst, // 非同期リセット
     input wire i_next_button, // 楽曲変更ボタン
-    input wire i_prev_button, // 楽曲変更ボタン
 
     // オーディオインターフェース
     output wire o_i2s_bck, // 1.536 MHzクロックと同じ
@@ -74,9 +73,6 @@ module top (
         end else if (i_next_button) begin
             we_command <= 1;
             command <= JOYPAD_COMMAND_NEXT_SONG;
-        end else if (i_prev_button) begin
-            we_command <= 1;
-            command <= JOYPAD_COMMAND_PREV_SONG;
         end else begin
             we_command <= 0;
             command <= 8'd0;

@@ -71,9 +71,9 @@ module gbs_joypad_controller (
         end else if (i_we_command) begin
             case (i_command) 
                 JOYPAD_COMMAND_NEXT_SONG:
-                    song_number <= (song_number >= (num_songs - 8'd1)) ? (num_songs - 8'd1) : (song_number + 8'd1);
+                    song_number <= (song_number >= (num_songs - 8'd1)) ? 8'd0 : (song_number + 8'd1);
                 JOYPAD_COMMAND_PREV_SONG:
-                    song_number <= (song_number == 8'd0) ? 8'd0 : (song_number - 8'd1);
+                    song_number <= (song_number == 8'd0) ? (num_songs - 8'd1) : (song_number - 8'd1);
                 default: ; // 何もしない
             endcase
         end
