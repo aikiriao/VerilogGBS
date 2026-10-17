@@ -2,7 +2,7 @@
 `include "sm83_register_address.vh"
 
 module gbs_memory #(
-    parameter ROM_FILE = "", // 初期ROMファイル
+    parameter ROM_FILE = "rtl/gbs_player/initial_rom.hex", // 初期ROMファイル
     parameter ROM_ADDRESS_BITS = 22 // ROMアドレスビット幅
 )(
     input wire i_clk, // クロック
@@ -36,7 +36,7 @@ module gbs_memory #(
     // メモリ初期化
     initial begin
         $readmemh(ROM_FILE, rom);
-        $readmemh("testdata/sm83/initial_ram.hex", ram);
+        $readmemh("rtl/gbs_player/initial_ram.hex", ram);
     end
 
     // RAM

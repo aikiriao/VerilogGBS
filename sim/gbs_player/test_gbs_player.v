@@ -39,7 +39,6 @@ module test_gbs_player;
     end
 
     gbs_player #(
-        .ROM_FILE("testdata/sm83/pkred_rom.hex"),
         .CLOCK_HZ(CLOCK_HZ),
         .SIGNAL_BIT_WIDTH(SIGNAL_BIT_WIDTH)
     ) player (
@@ -80,7 +79,7 @@ module test_gbs_player;
         clk = 0;
 
         gbs_player_reset();
-        gbs_load_and_play_test("testdata/sm83/pkred_rom.hex");
+        gbs_load_and_play_test("testdata/gbs_player/pkred_rom.hex");
 
         $fclose(fd);
         $finish;
