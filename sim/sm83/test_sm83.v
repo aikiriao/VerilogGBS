@@ -2231,7 +2231,7 @@ module test_sm83;
                 R16STK_BC: begin `EXPECT_EQ({cpu.b, cpu.c}, push_value); end
                 R16STK_DE: begin `EXPECT_EQ({cpu.d, cpu.e}, push_value); end
                 R16STK_HL: begin `EXPECT_EQ({cpu.h, cpu.l}, push_value); end
-                R16STK_AF: begin `EXPECT_EQ({cpu.a, cpu.flags}, push_value); end
+                R16STK_AF: begin `EXPECT_EQ({cpu.a, cpu.flags}, push_value & 16'hFFF0); end // 下位4bitはセットされない
             endcase
         end
     endtask
