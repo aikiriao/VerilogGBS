@@ -294,7 +294,7 @@ module apu #(
         input dac_enable;
         input [3:0] in;
 
-        dac = dac_enable ? (8'sd30 - ($signed({4'b0000, in}) <<< 2)) : 0;
+        dac = dac_enable ? (8'sd30 - ($signed({4'b0000, in}) <<< 2)) : 8'sd0;
     endfunction
 
     // DACに通す
