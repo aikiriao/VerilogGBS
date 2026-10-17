@@ -17,7 +17,6 @@ module apu #(
 
     localparam signed HPF_COEFFICIENT_FIXED = $rtoi(0.999958 * (1 << (SIGNAL_BIT_WIDTH - 1)) + 0.5);
     localparam signed [SIGNAL_BIT_WIDTH-1:0] HPF_COEFFICIENT = HPF_COEFFICIENT_FIXED[SIGNAL_BIT_WIDTH-1:0]; // HPF係数
-    localparam SCALE_RIGHT_SHIFT = 2; // 出力の右シフト フルスケールで出力すると機材が壊れる可能性があるため
 
     // 各レジスタの書き込み信号
     wire nr10_write = i_we_register & (i_address == `HWREG_NR10_CHANNEL1_SWEEP);
@@ -328,7 +327,7 @@ module apu #(
             // in * (volume + 1) / 8
             gain = $signed({1'b0, volume}) + 4'sd1;
             scaled = in * gain;
-            scaled = scaled >>> (3 + SCALE_RIGHT_SHIFT);
+            scaled = scaled >>> 3;
 
             apply_master_volume = scaled[7:0];
         end
