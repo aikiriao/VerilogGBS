@@ -11,6 +11,8 @@ module top (
 );
 
     localparam BITS_PER_SAMPLE = 16;
+    localparam SCALE_RIGHT_SHIFT = 2; // 出力の右シフト量 フルスケールで出力すると機材が壊れる可能性があるため
+    localparam DEBOUNCE_COUNT = 270_000;
 
     `include "gbs_player_joypad_command.vh"
 
@@ -18,9 +20,16 @@ module top (
     wire clk_1p5m; // 約1.536 MHzのクロック
     wire data_req; // データ読み出し要求
     wire rst_n = ~i_rst;
+
     wire signed [BITS_PER_SAMPLE-1:0] l_signal;
     wire signed [BITS_PER_SAMPLE-1:0] r_signal;
+    reg signed [BITS_PER_SAMPLE-1:0] scaled_l_signal;
+    reg signed [BITS_PER_SAMPLE-1:0] scaled_r_signal;
 
+    reg next_button_d1;
+    reg next_button_d2;
+    reg next_button;
+    reg [18:0] debounce_count;
     reg we_command;
     reg [7:0] command;
 
@@ -43,8 +52,8 @@ module top (
     ) i2s_tx (
         .i_clk(clk_1p5m), // ビットクロック
         .i_rst_n(rst_n), // 非同期リセット信号
-        .i_l_data(l_signal), // 左チャンネルデータ
-        .i_r_data(r_signal), // 右チャンネルデータ
+        .i_l_data(scaled_l_signal), // 左チャンネルデータ
+        .i_r_data(scaled_r_signal), // 右チャンネルデータ
         .o_req(data_req), // データ要求信号
         .o_bck(o_i2s_bck), // 1.536 MHzクロックと同じ
         .o_ws(o_i2s_ws), // 左右チャンネル切り替え信号（Low: 左チャンネル）
@@ -65,17 +74,54 @@ module top (
         .o_r_signal(r_signal)
     );
 
-    always @(posedge i_clk or negedge rst_n)
-    begin
+    // 出力信号更新
+    always @(posedge i_clk or negedge rst_n) begin
         if (!rst_n) begin
+            scaled_l_signal <= 0;
+            scaled_r_signal <= 0;
+        end else if (data_req) begin
+            // データ要求時にデータを更新
+            scaled_l_signal <= l_signal >>> SCALE_RIGHT_SHIFT;
+            scaled_r_signal <= r_signal >>> SCALE_RIGHT_SHIFT;
+        end
+    end
+
+    // ボタン状態更新
+    always @(posedge i_clk or negedge rst_n) begin
+        if (!rst_n) begin
+            next_button_d1 <= 0;
+            next_button_d2 <= 0;
+            next_button <= 0;
+            debounce_count <= 19'd0;
+
             we_command <= 0;
             command <= 8'd0;
-        end else if (i_next_button) begin
-            we_command <= 1;
-            command <= JOYPAD_COMMAND_NEXT_SONG;
         end else begin
-            we_command <= 0;
-            command <= 8'd0;
+            // 同期入力化（2FF挟んでメタステーブルを極力回避）
+            next_button_d1 <= i_next_button;
+            next_button_d2 <= next_button_d1;
+
+            // 送信コマンドパルスはなにもなければ0
+            we_command <= 1'b0;
+            command <= JOYPAD_COMMAND_NONE;
+
+            if (next_button_d2 == next_button) begin
+                debounce_count <= 19'd1;
+            end else begin
+                // next_buttonとは違うボタンが入ったことをカウント
+                if (debounce_count >= DEBOUNCE_COUNT) begin
+                    // ボタン状態を更新
+                    next_button <= next_button_d2;
+                    // 1 -> 0 が確定したら離したと判断
+                    if (next_button && !next_button_d2) begin
+                        we_command <= 1;
+                        command <= JOYPAD_COMMAND_NEXT_SONG;
+                    end
+                    debounce_count <= 19'd1;
+                end else begin
+                    debounce_count <= debounce_count + 19'd1;
+                end
+            end
         end
     end
 
